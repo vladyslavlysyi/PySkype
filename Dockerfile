@@ -8,7 +8,6 @@ RUN npm install
 
 # Build Next.js application
 COPY . .
-RUN npx prisma generate
 
 ARG NEXT_PUBLIC_API_URL
 ARG NEXT_PUBLIC_WS_URL
