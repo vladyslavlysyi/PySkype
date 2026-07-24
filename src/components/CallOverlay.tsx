@@ -105,17 +105,15 @@ export const CallOverlay = ({
           )}
 
           {/* PIP Local Video */}
-          {(isVideoCall && !isVideoOff) && (
-            <div className="absolute bottom-6 right-6 w-48 h-72 bg-black rounded-xl overflow-hidden shadow-2xl border border-gray-800 z-10 transition-transform hover:scale-105">
-              <video 
-                ref={localVideoRef} 
-                autoPlay 
-                playsInline 
-                muted
-                className="w-full h-full object-cover transform scale-x-[-1]"
-              />
-            </div>
-          )}
+          <div className={`absolute bottom-6 right-6 w-48 h-72 bg-black rounded-xl overflow-hidden shadow-2xl border border-gray-800 z-10 transition-transform hover:scale-105 ${(!isVideoCall || isVideoOff) ? 'hidden' : ''}`}>
+            <video 
+              ref={localVideoRef} 
+              autoPlay 
+              playsInline 
+              muted
+              className="w-full h-full object-cover transform scale-x-[-1]"
+            />
+          </div>
 
           {/* Calling State Overlay */}
           {!callAccepted && (
@@ -134,12 +132,14 @@ export const CallOverlay = ({
             {isMuted ? <MicOff className="w-6 h-6" /> : <Mic className="w-6 h-6" />}
           </button>
 
-          <button 
-            onClick={handleVideo}
-            className={`p-4 rounded-full transition shadow-lg ${isVideoOff ? 'bg-white text-black' : 'bg-gray-800/80 text-white hover:bg-gray-700'}`}
-          >
-            {isVideoOff ? <VideoOff className="w-6 h-6" /> : <Video className="w-6 h-6" />}
-          </button>
+          {isVideoCall && (
+            <button 
+              onClick={handleVideo}
+              className={`p-4 rounded-full transition shadow-lg ${isVideoOff ? 'bg-white text-black' : 'bg-gray-800/80 text-white hover:bg-gray-700'}`}
+            >
+              {isVideoOff ? <VideoOff className="w-6 h-6" /> : <Video className="w-6 h-6" />}
+            </button>
+          )}
 
           <button 
             onClick={endCall}

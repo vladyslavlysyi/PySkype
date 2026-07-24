@@ -14,6 +14,7 @@ export function useWebRTC(currentUserId: string | null, activeConversationId: st
   const { isConnected, sendMessage, subscribe } = useWebSocket()
   
   const [localStream, setLocalStream] = useState<MediaStream | null>(null)
+  const localStreamRef = useRef<MediaStream | null>(null)
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
   
   const [isCalling, setIsCalling] = useState(false)
@@ -109,9 +110,22 @@ export function useWebRTC(currentUserId: string | null, activeConversationId: st
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ video, audio: true })
       setLocalStream(stream)
+      localStreamRef.current = stream
       return stream
     } catch (err) {
-      console.error('Failed to get local stream', err)
+      console.warn('Failed to get media with video, falling back to audio only if possible', err)
+      if (video) {
+        try {
+          // Fallback to audio only
+          const audioStream = await navigator.mediaDevices.getUserMedia({ video: false, audio: true })
+          setLocalStream(audioStream)
+          localStreamRef.current = audioStream
+          return audioStream
+        } catch (audioErr) {
+          console.error('Failed to get audio stream as well', audioErr)
+          throw audioErr
+        }
+      }
       throw err
     }
   }
@@ -221,8 +235,9 @@ export function useWebRTC(currentUserId: string | null, activeConversationId: st
       peerConnectionRef.current = null
     }
 
-    if (localStream) {
-      localStream.getTracks().forEach((track) => track.stop())
+    if (localStreamRef.current) {
+      localStreamRef.current.getTracks().forEach((track) => track.stop())
+      localStreamRef.current = null
       setLocalStream(null)
     }
 
