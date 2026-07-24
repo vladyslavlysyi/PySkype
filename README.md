@@ -1,96 +1,72 @@
-# Skype Web Clone 🚀
+# Skype Web Clone (FastAPI Edition) 🚀
 
-Сучасний веб-клон Skype, побудований на стеку: Next.js 14, Tailwind CSS, Socket.io, WebRTC та PostgreSQL (Prisma).
+Сучасний веб-клон Skype, побудований на стеку: Next.js 14, Tailwind CSS, FastAPI, WebSockets, WebRTC та PostgreSQL (SQLAlchemy 2.0).
 Підтримує пошук користувачів, обмін текстовими повідомленнями в реальному часі та відео/аудіо дзвінки (P2P).
 
 ## Структура Проекту (File Tree)
 
 ```text
 skype-clone/
-├── prisma/
-│   └── schema.prisma           # Опис моделі бази даних (Users, Messages, Conversations)
-├── src/
-│   ├── app/                    # Next.js App Router
-│   │   ├── api/
-│   │   │   ├── auth/           # Ендпоінти для реєстрації та логіну (JWT)
-│   │   │   ├── chats/          # REST API для чатів та повідомлень
-│   │   │   └── users/search/   # REST API для пошуку користувачів
-│   │   ├── layout.tsx          # Головний RootLayout із <SocketProvider>
-│   │   └── page.tsx            # Головний інтерфейс чату (Sidebar, ChatArea, CallOverlay)
-│   ├── components/             # React-компоненти
-│   │   ├── Sidebar.tsx         # Бічне меню з контактами та пошуком
-│   │   ├── ChatArea.tsx        # Зона повідомлень
-│   │   └── CallOverlay.tsx     # Інтерфейс дзвінка (модальне вікно та WebRTC Grid)
-│   ├── contexts/
-│   │   └── SocketContext.tsx   # Провайдер підключення до Socket.io
-│   ├── hooks/
-│   │   └── useWebRTC.ts        # Хук для роботи з P2P-з'єднаннями (RTCPeerConnection)
-│   ├── lib/
-│   │   ├── auth.ts             # Утиліти хешування та генерації JWT
-│   │   └── prisma.ts           # Prisma Client Singleton
-│   ├── socket/
-│   │   └── socketHandler.ts    # Типізована логіка для Socket.io сервера (Signaling, Messages)
-│   └── store/
-│       └── useAppStore.ts      # Zustand сховище глобального стану (клієнт)
-├── server.js                   # Node.js + Express кастомний сервер для Next.js та Socket.io
-├── package.json
-└── .env.example                # Приклад змінних середовища
+├── backend/                     # Python / FastAPI Backend
+│   ├── app/
+│   │   ├── main.py              # Точка входу FastAPI
+│   │   ├── database.py          # SQLAlchemy Async Engine
+│   │   ├── models.py            # SQLAlchemy Моделі (Users, Messages)
+│   │   ├── schemas.py           # Pydantic схеми для валідації
+│   │   ├── auth.py              # JWT-логіка та хешування (bcrypt)
+│   │   ├── routes/              # REST ендпоінти
+│   │   └── sockets/             # WebSockets (ConnectionManager, Signaling)
+│   ├── requirements.txt         # Залежності бекенду
+│   └── Dockerfile               # Докерфайл для бекенду
+├── src/                         # Next.js App Router (Frontend)
+│   ├── app/
+│   ├── components/              # UI-компоненти (Tailwind, Lucide)
+│   ├── contexts/                # WebSocketProvider для нативного WS
+│   ├── hooks/                   # useWebRTC хук
+│   └── store/                   # Zustand (стейт-менеджмент)
+├── docker-compose.yml           # Файл для підняття всієї інфраструктури
+├── Dockerfile                   # Докерфайл для фронтенду (Standalone)
+└── .env.example                 # Приклад змінних середовища
 ```
 
-## Інструкція Запуску (Local Development)
+## Інструкція Запуску через Docker (Рекомендовано)
 
-1. **Встановлення залежностей:**
-   Переконайтеся, що ви скопіювали вміст `package.json` та запустіть:
-   ```bash
-   npm install
-   ```
-   Додатково знадобиться: `npm install zustand lucide-react clsx tailwind-merge`
+Завдяки Docker Compose, вам не потрібно встановлювати Python або Node.js на вашу машину. 
 
-2. **Налаштування бази даних:**
-   Скопіюйте файл конфігурації та вкажіть ваші дані підключення (PostgreSQL).
+1. Переконайтеся, що у вас встановлено Docker та Docker Compose.
+2. Відкрийте термінал у кореневій папці проекту.
+3. Виконайте команду:
    ```bash
-   cp .env.example .env
-   ```
-   Запустіть міграцію для створення таблиць:
-   ```bash
-   npx prisma generate
-   npx prisma db push
+   docker-compose up -d --build
    ```
 
-3. **Запуск сервера:**
-   Оскільки у нас є і Next.js, і Socket.io, ми використовуємо кастомний Node.js сервер.
-   ```bash
-   npm run dev
-   # Або напряму: node server.js
-   ```
+**Що відбудеться:**
+- Підніметься контейнер бази даних PostgreSQL (на порту 5432).
+- Підніметься FastAPI бекенд (на порту 8000). При старті він автоматично створить усі необхідні таблиці в базі даних (через `Base.metadata.create_all`).
+- Скомпілюється і підніметься Next.js фронтенд (на порту 3000).
 
-4. Відкрийте браузер за адресою: `http://localhost:3000`
+Після того, як контейнери успішно запустяться, відкрийте у браузері: `http://localhost:3000`
 
-## Деплой у Production
+## Локальний запуск (Без Docker)
 
-Оскільки ми використовуємо WebSockets та WebRTC, стандартний деплой на Vercel (де функції працюють як Serverless) **НЕ ПІДХОДИТЬ** для `server.js` частини, оскільки Vercel обриває WebSocket-з'єднання.
+Якщо ви хочете запустити проект локально для розробки:
 
-### Варіант 1: Render / Railway / DigitalOcean (Рекомендовано)
-Ці сервіси дозволяють запускати повноцінні Node.js сервери.
-1. Прив'яжіть свій GitHub репозиторій.
-2. Вкажіть Build Command: `npm install && npx prisma generate && npm run build`
-3. Вкажіть Start Command: `npm start`
-4. Не забудьте додати всі змінні середовища (DATABASE_URL, JWT_SECRET, NEXT_PUBLIC_SITE_URL).
-
-### Варіант 2: Docker
-Якщо ви хочете підняти проект на власному VPS (наприклад, Ubuntu-сервер), ви можете використати такий `Dockerfile`:
-```dockerfile
-FROM node:18-alpine
-WORKDIR /app
-COPY package*.json ./
-RUN npm install
-COPY . .
-RUN npx prisma generate
-RUN npm run build
-EXPOSE 3000
-CMD ["npm", "start"]
+**Бекенд:**
+```bash
+cd backend
+python -m venv venv
+source venv/bin/activate  # Для Windows: venv\Scripts\activate
+pip install -r requirements.txt
+uvicorn app.main:app --reload
 ```
 
-## WebRTC TURN Сервери
-Для того щоб відеодзвінки працювали між користувачами, які знаходяться за різними NAT/Firewall роутерами (наприклад, через 4G), STUN серверів недостатньо. 
-У Production використовуйте платні/відкриті TURN сервери (наприклад Twilio Network Traversal або Metered TURN) та додайте їх у `useWebRTC.ts`.
+**Фронтенд:**
+```bash
+npm install
+npm run dev
+```
+
+## Деплоймент
+Оскільки тепер бекенд повністю ізольований (FastAPI), ви можете деплоїти його куди завгодно:
+- Фронтенд: **Vercel** або **Netlify**.
+- Бекенд: **Render**, **Railway**, або власний **VPS** (через Docker).

@@ -5,21 +5,23 @@ export interface User {
   username: string
   email?: string
   avatarUrl?: string | null
+  description?: string
   status: 'ONLINE' | 'AWAY' | 'DO_NOT_DISTURB' | 'OFFLINE'
 }
 
 export interface Message {
   id: string
-  text: string
-  senderId: string
-  createdAt: string
+  content: string
+  sender_id: string
+  conversation_id?: string
+  created_at: string
   sender?: User
 }
 
 export interface Conversation {
   id: string
   type: 'DIRECT' | 'GROUP'
-  participants: { user: User }[]
+  participants: { user: User, is_pinned: boolean }[]
   messages?: Message[]
 }
 

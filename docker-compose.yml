@@ -1,0 +1,62 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:15-alpine
+    container_name: skype_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgrespassword
+      POSTGRES_DB: skype_clone
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # FastAPI Backend
+  backend:
+    build: 
+      context: ./backend
+    container_name: skype_backend
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgrespassword@db:5432/skype_clone
+      - JWT_SECRET=super-secret-key-12345
+    depends_on:
+      db:
+        condition: service_healthy
+
+  # Next.js Frontend
+  frontend:
+    build:
+      context: .
+    container_name: skype_frontend
+    environment:
+      - NEXT_PUBLIC_API_URL=https://164-90-221-45.nip.io
+      - NEXT_PUBLIC_WS_URL=wss://164-90-221-45.nip.io/api/ws
+    depends_on:
+      - backend
+
+  # Caddy Reverse Proxy & HTTPS
+  caddy:
+    image: caddy:2-alpine
+    container_name: skype_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - frontend
+      - backend
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:

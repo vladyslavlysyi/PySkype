@@ -1,19 +1,17 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { useSocket } from '@/contexts/SocketContext'
+import { useWebSocket } from '@/contexts/WebSocketContext'
 
 const ICE_SERVERS = {
   iceServers: [
     { urls: 'stun:stun.l.google.com:19302' },
     { urls: 'stun:stun1.l.google.com:19302' },
-    { urls: 'stun:stun2.l.google.com:19302' }
-    // TURN servers should be added here for production
   ]
 }
 
-export function useWebRTC(currentUserId: string | null) {
-  const { socket } = useSocket()
+export function useWebRTC(currentUserId: string | null, activeConversationId: string | null = null) {
+  const { isConnected, sendMessage, subscribe } = useWebSocket()
   
   const [localStream, setLocalStream] = useState<MediaStream | null>(null)
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
@@ -25,58 +23,61 @@ export function useWebRTC(currentUserId: string | null) {
   const [callAccepted, setCallAccepted] = useState(false)
   const [callEnded, setCallEnded] = useState(false)
   const [isVideoCall, setIsVideoCall] = useState(true)
+  const [callStartTime, setCallStartTime] = useState<number | null>(null)
+  const [isCaller, setIsCaller] = useState(false)
 
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null)
   const localVideoRef = useRef<HTMLVideoElement | null>(null)
 
-  // 1. Listen for incoming calls & WebRTC signaling from Socket
+  // 1. Listen for incoming calls & WebRTC signaling
   useEffect(() => {
-    if (!socket || !currentUserId) return
+    if (!isConnected || !currentUserId) return
 
-    socket.on('incoming-call', ({ from, signal, isVideo }) => {
+    const unsubIncoming = subscribe('incoming_call', (payload) => {
       setIsReceivingCall(true)
-      setCallerId(from)
-      setCallerSignal(signal)
-      setIsVideoCall(isVideo)
+      setCallerId(payload.from)
+      setCallerSignal(payload.sdp)
+      setIsVideoCall(payload.is_video)
     })
 
-    socket.on('call-accepted', async ({ signal }) => {
+    const unsubAccepted = subscribe('call_accepted', async (payload) => {
       setCallAccepted(true)
+      setCallStartTime(Date.now())
       if (peerConnectionRef.current) {
-        await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(signal))
+        await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(payload.sdp))
       }
     })
 
-    socket.on('ice-candidate-received', async ({ candidate }) => {
+    const unsubIce = subscribe('ice_candidate_received', async (payload) => {
       try {
-        if (peerConnectionRef.current && candidate) {
-          await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(candidate))
+        if (peerConnectionRef.current && payload.candidate) {
+          await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(payload.candidate))
         }
       } catch (e) {
         console.error('Error adding received ice candidate', e)
       }
     })
 
-    socket.on('call-ended', () => {
-      endCall(false) // false because it was ended remotely
+    const unsubEnded = subscribe('call_ended', () => {
+      endCall(false)
     })
 
-    socket.on('call-rejected', () => {
+    const unsubRejected = subscribe('call_rejected', () => {
       endCall(false)
       alert('Користувач відхилив виклик')
     })
 
     return () => {
-      socket.off('incoming-call')
-      socket.off('call-accepted')
-      socket.off('ice-candidate-received')
-      socket.off('call-ended')
-      socket.off('call-rejected')
+      unsubIncoming()
+      unsubAccepted()
+      unsubIce()
+      unsubEnded()
+      unsubRejected()
     }
-  }, [socket, currentUserId])
+  }, [isConnected, currentUserId, subscribe])
 
-  // Attach streams to video elements automatically when they change
+  // Attach streams to video elements automatically
   useEffect(() => {
     if (localVideoRef.current && localStream) {
       localVideoRef.current.srcObject = localStream
@@ -105,25 +106,18 @@ export function useWebRTC(currentUserId: string | null) {
   const createPeerConnection = (targetUserId: string, stream: MediaStream) => {
     const pc = new RTCPeerConnection(ICE_SERVERS)
 
-    // Add local tracks to PeerConnection
     stream.getTracks().forEach((track) => pc.addTrack(track, stream))
 
-    // Listen for remote tracks
     pc.ontrack = (event) => {
       setRemoteStream(event.streams[0])
     }
 
-    // Handle ICE Candidates
     pc.onicecandidate = (event) => {
-      if (event.candidate && socket) {
-        socket.emit('ice-candidate', {
-          targetUserId,
-          candidate: event.candidate
-        })
+      if (event.candidate) {
+        sendMessage('ice_candidate', { candidate: event.candidate }, targetUserId)
       }
     }
 
-    // Connection state changes
     pc.oniceconnectionstatechange = () => {
       if (pc.iceConnectionState === 'disconnected' || pc.iceConnectionState === 'failed') {
         endCall(false)
@@ -136,24 +130,24 @@ export function useWebRTC(currentUserId: string | null) {
 
   // 2. Initiate Call
   const callUser = async (userToCall: string, video: boolean = true) => {
-    if (!socket) return
-
     try {
       setIsVideoCall(video)
       const stream = await getMediaStream(video)
       const pc = createPeerConnection(userToCall, stream)
       
       setIsCalling(true)
+      setIsCaller(true)
+      setCallerId(userToCall)
       setCallEnded(false)
 
       const offer = await pc.createOffer()
       await pc.setLocalDescription(offer)
 
-      socket.emit('call-user', {
-        userToCall,
-        signalData: offer,
-        isVideo: video
-      })
+      sendMessage('call_offer', {
+        sdp: offer,
+        is_video: video
+      }, userToCall)
+      
     } catch (err) {
       alert('Не вдалося отримати доступ до камери або мікрофону')
     }
@@ -161,12 +155,14 @@ export function useWebRTC(currentUserId: string | null) {
 
   // 3. Answer Call
   const answerCall = async () => {
-    if (!socket || !callerId || !callerSignal) return
+    if (!callerId || !callerSignal) return
 
     try {
       const stream = await getMediaStream(isVideoCall)
       setCallAccepted(true)
+      setCallStartTime(Date.now())
       setIsReceivingCall(false)
+      setIsCaller(false)
       setCallEnded(false)
 
       const pc = createPeerConnection(callerId, stream)
@@ -175,10 +171,7 @@ export function useWebRTC(currentUserId: string | null) {
       const answer = await pc.createAnswer()
       await pc.setLocalDescription(answer)
 
-      socket.emit('answer-call', {
-        to: callerId,
-        signal: answer
-      })
+      sendMessage('call_answer', { sdp: answer }, callerId)
     } catch (err) {
       alert('Не вдалося отримати доступ до медіа-пристроїв')
     }
@@ -186,8 +179,8 @@ export function useWebRTC(currentUserId: string | null) {
 
   // 4. Reject Call
   const rejectCall = () => {
-    if (socket && callerId) {
-      socket.emit('reject-call', { to: callerId })
+    if (callerId) {
+      sendMessage('reject_call', {}, callerId)
     }
     setIsReceivingCall(false)
     setCallerId(null)
@@ -212,20 +205,30 @@ export function useWebRTC(currentUserId: string | null) {
     }
 
     setRemoteStream(null)
+    
+    let duration = 0
+    if (callStartTime) {
+      duration = Math.floor((Date.now() - callStartTime) / 1000)
+    }
 
-    if (emitSocketEvent && socket) {
-      // Find the remote user we are talking to
-      const targetUserId = callerId // Simplification: we might need exact target depending on who called
-      if (targetUserId) {
-        socket.emit('end-call', { to: targetUserId })
+    if (emitSocketEvent && callerId) {
+      sendMessage('end_call', {}, callerId)
+      
+      if (isCaller && duration > 0 && activeConversationId) {
+        const m = Math.floor(duration / 60)
+        const s = duration % 60
+        sendMessage('send_message', {
+          conversation_id: activeConversationId,
+          content: `📞 Дзвінок завершено. Тривалість: ${m} хв ${s} сек`
+        }, callerId)
       }
     }
     
     setCallerId(null)
     setCallerSignal(null)
-  }, [socket, callerId, localStream])
+    setCallStartTime(null)
+  }, [callerId, localStream, sendMessage, callStartTime, activeConversationId])
 
-  // Call Controls
   const toggleMute = () => {
     if (localStream) {
       const audioTrack = localStream.getAudioTracks()[0]

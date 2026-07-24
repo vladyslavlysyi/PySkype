@@ -3,10 +3,31 @@
 import React, { useEffect, useState } from 'react'
 import { Search, UserCircle, MessageSquare, Phone, MoreVertical, CheckCircle2, Clock, XCircle, Moon } from 'lucide-react'
 import { useAppStore, User } from '@/store/useAppStore'
+import { ProfileModal } from './ProfileModal'
 
 export const Sidebar = () => {
-  const { currentUser, conversations, activeConversation, setActiveConversation, searchQuery, setSearchQuery, searchResults, setSearchResults } = useAppStore()
+  const { currentUser, conversations, setConversations, activeConversation, setActiveConversation, searchQuery, setSearchQuery, searchResults, setSearchResults } = useAppStore()
   const [isSearching, setIsSearching] = useState(false)
+  const [isProfileOpen, setIsProfileOpen] = useState(false)
+
+  // Fetch conversations
+  useEffect(() => {
+    if (!currentUser) return
+    const fetchConversations = async () => {
+      try {
+        const res = await fetch('/api/users/conversations', {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        })
+        const data = await res.json()
+        if (Array.isArray(data)) {
+          setConversations(data)
+        }
+      } catch (err) {
+        console.error("Failed to fetch conversations", err)
+      }
+    }
+    fetchConversations()
+  }, [currentUser, setConversations])
 
   // Mock search debounce
   useEffect(() => {
@@ -19,9 +40,13 @@ export const Sidebar = () => {
     const timer = setTimeout(async () => {
       setIsSearching(true)
       try {
-        const res = await fetch(`/api/users/search?q=${searchQuery}`)
+        const res = await fetch(`/api/users/search?q=${searchQuery}`, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        })
         const data = await res.json()
-        setSearchResults(data.users || [])
+        setSearchResults(Array.isArray(data) ? data : [])
       } catch (err) {
         console.error(err)
       } finally {
@@ -31,6 +56,8 @@ export const Sidebar = () => {
 
     return () => clearTimeout(timer)
   }, [searchQuery, setSearchResults])
+
+  const [contextMenuId, setContextMenuId] = useState<string | null>(null)
 
   const startChat = async (targetUser: User) => {
     try {
@@ -45,10 +72,61 @@ export const Sidebar = () => {
       const data = await res.json()
       if (data.conversation) {
         setActiveConversation(data.conversation)
+        // Refresh conversations to include the new one
+        const convRes = await fetch('/api/users/conversations', {
+          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        })
+        const convData = await convRes.json()
+        if (Array.isArray(convData)) setConversations(convData)
         setSearchQuery('')
       }
     } catch (err) {
       console.error(err)
+    }
+  }
+
+  const pinChat = async (convId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      const res = await fetch(`/api/chats/${convId}/pin`, {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      })
+      const data = await res.json()
+      if (data.status === 'success') {
+        // Update local state
+        setConversations(conversations.map(c => {
+          if (c.id === convId) {
+            const myPart = c.participants.find(p => p.user.id === currentUser?.id)
+            if (myPart) myPart.is_pinned = data.is_pinned
+          }
+          return c
+        }))
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setContextMenuId(null)
+    }
+  }
+
+  const deleteChat = async (convId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      const res = await fetch(`/api/chats/${convId}`, {
+        method: 'DELETE',
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      })
+      if (res.ok) {
+        setConversations(conversations.filter(c => c.id !== convId))
+        if (activeConversation?.id === convId) {
+          setActiveConversation(null)
+        }
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setContextMenuId(null)
     }
   }
 
@@ -66,7 +144,10 @@ export const Sidebar = () => {
     <div className="w-80 h-full bg-[#f3f2f1] dark:bg-[#201f1e] border-r border-gray-300 dark:border-gray-800 flex flex-col">
       {/* Header Profile */}
       <div className="p-4 flex items-center justify-between border-b border-gray-300 dark:border-gray-800">
-        <div className="flex items-center gap-3 cursor-pointer">
+        <div 
+          className="flex items-center gap-3 cursor-pointer hover:bg-gray-200 dark:hover:bg-[#323130] p-1.5 -ml-1.5 rounded-xl transition"
+          onClick={() => setIsProfileOpen(true)}
+        >
           <div className="relative">
             {currentUser?.avatarUrl ? (
               <img src={currentUser.avatarUrl} alt="avatar" className="w-10 h-10 rounded-full object-cover" />
@@ -124,20 +205,30 @@ export const Sidebar = () => {
             )}
           </div>
         ) : (
-          <div>
+          <div onClick={() => setContextMenuId(null)}>
             <h3 className="text-xs font-semibold text-gray-500 uppercase px-2 mb-2">Recent Chats</h3>
             {conversations.length === 0 ? (
               <p className="text-sm text-gray-500 px-2">No recent chats.</p>
             ) : (
-              conversations.map(conv => {
+              [...conversations].sort((a, b) => {
+                const aPinned = a.participants.find(p => p.user.id === currentUser?.id)?.is_pinned
+                const bPinned = b.participants.find(p => p.user.id === currentUser?.id)?.is_pinned
+                if (aPinned && !bPinned) return -1
+                if (!aPinned && bPinned) return 1
+                return 0
+              }).map(conv => {
+                const myPart = conv.participants.find(p => p.user.id === currentUser?.id)
+                const isPinned = myPart?.is_pinned
                 const partner = conv.participants.find(p => p.user.id !== currentUser?.id)?.user
                 const isActive = activeConversation?.id === conv.id
+                const isMenuOpen = contextMenuId === conv.id
 
                 return (
                   <div 
                     key={conv.id} 
                     onClick={() => setActiveConversation(conv)}
-                    className={`flex items-center gap-3 p-2 rounded-lg cursor-pointer transition ${isActive ? 'bg-[#e1dfdd] dark:bg-[#323130]' : 'hover:bg-gray-200 dark:hover:bg-[#323130]'}`}
+                    onContextMenu={(e) => { e.preventDefault(); setContextMenuId(conv.id) }}
+                    className={`relative flex items-center gap-3 p-2 rounded-lg cursor-pointer transition group ${isActive ? 'bg-[#e1dfdd] dark:bg-[#323130]' : 'hover:bg-gray-200 dark:hover:bg-[#323130]'}`}
                   >
                     <div className="relative flex-shrink-0">
                       <UserCircle className="w-10 h-10 text-gray-500" />
@@ -145,11 +236,40 @@ export const Sidebar = () => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-baseline">
-                        <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">{conv.type === 'GROUP' ? 'Group Chat' : partner?.username}</h4>
-                        <span className="text-[10px] text-gray-500">12:34</span>
+                        <div className="flex items-center gap-1">
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">{conv.type === 'GROUP' ? 'Group Chat' : partner?.username}</h4>
+                          {isPinned && <span className="text-[10px] text-[#0078d4]">📌</span>}
+                        </div>
+                        <span className="text-[10px] text-gray-500"></span>
                       </div>
                       <p className="text-xs text-gray-500 truncate">Select to view messages...</p>
                     </div>
+                    
+                    {/* Context Menu Trigger */}
+                    <button 
+                      onClick={(e) => { e.stopPropagation(); setContextMenuId(isMenuOpen ? null : conv.id) }}
+                      className={`p-1 rounded-full hover:bg-gray-300 dark:hover:bg-gray-700 transition ${isMenuOpen ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}
+                    >
+                      <MoreVertical className="w-4 h-4 text-gray-500" />
+                    </button>
+
+                    {/* Context Menu */}
+                    {isMenuOpen && (
+                      <div className="absolute right-2 top-10 z-10 w-32 bg-white dark:bg-[#201f1e] rounded-md shadow-lg border border-gray-200 dark:border-gray-700 py-1">
+                        <button 
+                          onClick={(e) => pinChat(conv.id, e)}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#323130]"
+                        >
+                          {isPinned ? 'Unpin' : 'Pin chat'}
+                        </button>
+                        <button 
+                          onClick={(e) => deleteChat(conv.id, e)}
+                          className="w-full text-left px-4 py-2 text-sm text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20"
+                        >
+                          Delete chat
+                        </button>
+                      </div>
+                    )}
                   </div>
                 )
               })
@@ -157,6 +277,14 @@ export const Sidebar = () => {
           </div>
         )}
       </div>
+
+      {isProfileOpen && currentUser && (
+        <ProfileModal 
+          user={currentUser} 
+          onClose={() => setIsProfileOpen(false)} 
+          isMe={true} 
+        />
+      )}
     </div>
   )
 }

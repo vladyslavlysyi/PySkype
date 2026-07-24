@@ -8,10 +8,10 @@ import { useAppStore } from '@/store/useAppStore'
 import { useWebRTC } from '@/hooks/useWebRTC'
 
 export default function Home() {
-  const { currentUser } = useAppStore()
+  const { currentUser, activeConversation } = useAppStore()
   
   // We use WebRTC hook with current User ID
-  const webrtc = useWebRTC(currentUser?.id || null)
+  const webrtc = useWebRTC(currentUser?.id || null, activeConversation?.id || null)
 
   // A very basic Auth mock for the UI demo purposes before connecting the real login screen.
   // Normally you'd wrap this in an AuthGuard.
