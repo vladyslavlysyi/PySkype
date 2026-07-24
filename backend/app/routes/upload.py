@@ -3,7 +3,7 @@ from typing import Dict
 import os
 import uuid
 import shutil
-from ..auth import get_current_user
+from .deps import get_current_user
 from ..schemas import UserResponse
 
 router = APIRouter()
