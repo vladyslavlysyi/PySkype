@@ -27,8 +27,8 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
     const token = localStorage.getItem('token')
     if (!token) return
 
-    // Replace with your FastAPI backend WS URL directly since Next.js proxy doesn't handle WS well in standalone mode
-    const wsUrl = 'ws://localhost:8000/api/ws'
+    // Use the environment variable, fallback to localhost for development
+    const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/api/ws'
     const ws = new WebSocket(`${wsUrl}?token=${token}`)
 
     ws.onopen = () => setIsConnected(true)
