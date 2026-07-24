@@ -46,6 +46,21 @@ export const CallOverlay = ({
     else if (fromConvs) callerName = fromConvs.username
   }
 
+  React.useEffect(() => {
+    let audio: HTMLAudioElement | null = null;
+    if (isReceivingCall && !callAccepted) {
+      audio = new Audio('/ringtone.mp3');
+      audio.loop = true;
+      audio.play().catch(e => console.error("Audio play failed (maybe blocked by browser):", e));
+    }
+    return () => {
+      if (audio) {
+        audio.pause();
+        audio.currentTime = 0;
+      }
+    };
+  }, [isReceivingCall, callAccepted]);
+
   const handleMute = () => {
     toggleMute()
     setIsMuted(!isMuted)
