@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useRef } from 'react'
-import { Phone, Video, MoreHorizontal, Send, Smile, Paperclip, UserCircle } from 'lucide-react'
+import { Phone, Video, MoreHorizontal, Send, Smile, Paperclip, UserCircle, ArrowLeft } from 'lucide-react'
 import { useAppStore, Message } from '@/store/useAppStore'
 import { useWebSocket } from '@/contexts/WebSocketContext'
 import { ProfileModal } from './ProfileModal'
@@ -126,7 +126,7 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
 
   if (!activeConversation) {
     return (
-      <div className="flex-1 flex flex-col items-center justify-center bg-[#faf9f8] dark:bg-[#11100f]">
+      <div className="hidden md:flex flex-1 flex-col items-center justify-center bg-[#faf9f8] dark:bg-[#11100f]">
         <div className="w-48 h-48 mb-6 opacity-20">
           <svg viewBox="0 0 24 24" fill="currentColor" className="text-[#0078d4]"><path d="M23.993 12.446c-.035-1.127-.247-2.224-.627-3.265-.187-.512-.39-1.02-.622-1.517-.552-1.182-1.23-2.277-2.023-3.268-1.066-1.332-2.35-2.433-3.816-3.267-1.472-.84-3.08-1.378-4.78-1.597-1.745-.224-3.528-.088-5.234.394-1.637.462-3.176 1.184-4.57 2.143-1.458 1.002-2.73 2.257-3.766 3.73-1.01 1.436-1.765 3.056-2.235 4.802-.455 1.69-.597 3.447-.417 5.17.18 1.732.697 3.407 1.53 4.975.818 1.537 1.884 2.912 3.167 4.073 1.258 1.14 2.71 2.052 4.3 2.702 1.564.64 3.228 1.006 4.945 1.085 1.758.08 3.515-.125 5.21-.607 1.637-.466 3.17-1.196 4.554-2.164 1.442-.998 2.705-2.247 3.733-3.712.982-1.4 1.716-2.97 2.176-4.665.443-1.635.586-3.342.475-5.01zm-13.435 6.096c-2.825.04-5.367-1.04-7.143-3.06-1.68-1.91-2.486-4.48-2.26-7.234.198-2.42 1.34-4.663 3.224-6.31 1.847-1.615 4.316-2.432 6.945-2.302 2.723.134 5.253 1.353 7.122 3.433 1.763 1.96 2.553 4.588 2.222 7.4-.306 2.6-1.583 4.965-3.593 6.657-1.897 1.597-4.417 2.37-7.16 2.365z"/></svg>
         </div>
@@ -137,24 +137,32 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-white dark:bg-[#11100f]">
+    <div className={`flex-1 flex-col bg-white dark:bg-[#11100f] ${!activeConversation ? 'hidden md:flex' : 'flex'} w-full md:w-auto`}>
       {/* Header */}
-      <div className="h-16 px-6 flex items-center justify-between border-b border-gray-300 dark:border-gray-800 bg-[#f3f2f1] dark:bg-[#201f1e] shadow-md relative z-10">
-        <div 
-          className="flex items-center gap-3 cursor-pointer hover:bg-gray-200 dark:hover:bg-[#323130] p-1.5 -ml-1.5 rounded-xl transition"
-          onClick={() => setIsProfileOpen(true)}
-        >
-          {partner?.avatarUrl ? (
-            <img src={partner.avatarUrl} alt="avatar" className="w-10 h-10 rounded-full ring-2 ring-gray-100 dark:ring-gray-800" />
-          ) : (
-            <UserCircle className="w-10 h-10 text-gray-500" />
-          )}
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="font-semibold text-gray-900 dark:text-white">{partner?.username}</h2>
-              {isPinned && <span className="text-[10px] text-[#0078d4]">📌</span>}
+      <div className="h-16 px-4 md:px-6 flex items-center justify-between border-b border-gray-300 dark:border-gray-800 bg-[#f3f2f1] dark:bg-[#201f1e] shadow-md relative z-10">
+        <div className="flex items-center gap-2 md:gap-3">
+          <button 
+            className="md:hidden p-2 -ml-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 transition"
+            onClick={() => setActiveConversation(null)}
+          >
+            <ArrowLeft className="w-5 h-5 text-gray-600 dark:text-gray-300" />
+          </button>
+          <div 
+            className="flex items-center gap-3 cursor-pointer hover:bg-gray-200 dark:hover:bg-[#323130] p-1.5 rounded-xl transition"
+            onClick={() => setIsProfileOpen(true)}
+          >
+            {partner?.avatarUrl ? (
+              <img src={partner.avatarUrl} alt="avatar" className="w-10 h-10 rounded-full ring-2 ring-gray-100 dark:ring-gray-800" />
+            ) : (
+              <UserCircle className="w-10 h-10 text-gray-500" />
+            )}
+            <div>
+              <div className="flex items-center gap-2">
+                <h2 className="font-semibold text-gray-900 dark:text-white">{partner?.username}</h2>
+                {isPinned && <span className="text-[10px] text-[#0078d4]">📌</span>}
+              </div>
+              <p className="text-xs text-[#0078d4] font-medium">{partner?.status === 'ONLINE' ? 'Active now' : 'Offline'}</p>
             </div>
-            <p className="text-xs text-[#0078d4] font-medium">{partner?.status === 'ONLINE' ? 'Active now' : 'Offline'}</p>
           </div>
         </div>
         <div className="flex items-center gap-2 relative">

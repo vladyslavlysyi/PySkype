@@ -143,7 +143,7 @@ export const Sidebar = () => {
   const [isHeaderMenuOpen, setIsHeaderMenuOpen] = useState(false)
 
   return (
-    <div className="w-80 h-full bg-[#f3f2f1] dark:bg-[#201f1e] border-r border-gray-300 dark:border-gray-800 flex flex-col">
+    <div className={`h-full bg-[#f3f2f1] dark:bg-[#201f1e] border-r border-gray-300 dark:border-gray-800 flex-col flex-shrink-0 ${activeConversation ? 'hidden md:flex' : 'flex'} w-full md:w-80`}>
       {/* Header Profile */}
       <div className="p-4 flex items-center justify-between border-b border-gray-300 dark:border-gray-800 relative">
         <div 
