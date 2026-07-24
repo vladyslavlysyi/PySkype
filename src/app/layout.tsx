@@ -3,6 +3,8 @@ import { Inter } from 'next/font/google'
 import './globals.css'
 import { WebSocketProvider } from '@/contexts/WebSocketContext'
 
+import { AuthGuard } from '@/components/AuthGuard'
+
 const inter = Inter({ subsets: ['latin'] })
 
 export const metadata: Metadata = {
@@ -19,7 +21,9 @@ export default function RootLayout({
     <html lang="en" className="dark">
       <body className={inter.className}>
         <WebSocketProvider>
-          {children}
+          <AuthGuard>
+            {children}
+          </AuthGuard>
         </WebSocketProvider>
       </body>
     </html>
