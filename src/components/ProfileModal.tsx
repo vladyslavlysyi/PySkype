@@ -16,7 +16,7 @@ export const ProfileModal = ({ user, onClose, isMe = false }: ProfileModalProps)
     username: user.username || '',
     email: user.email || '',
     description: user.description || '',
-    avatarUrl: user.avatarUrl || '',
+    avatarUrl: user.avatar_url || '',
     password: ''
   })
   const [isLoading, setIsLoading] = useState(false)
@@ -109,9 +109,9 @@ export const ProfileModal = ({ user, onClose, isMe = false }: ProfileModalProps)
           {/* Avatar (Outside scroll container to prevent clipping) */}
           <div className="absolute -top-12 left-6 z-10">
             <div className="relative inline-block">
-              {user.avatarUrl ? (
+              {user.avatar_url ? (
                 <img 
-                  src={user.avatarUrl} 
+                  src={user.avatar_url} 
                   alt="avatar" 
                   className="w-24 h-24 rounded-full border-4 border-white dark:border-[#201f1e] object-cover bg-white dark:bg-gray-800" 
                 />

@@ -29,6 +29,7 @@ export function useWebRTC(currentUserId: string | null, activeConversationId: st
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
   const remoteVideoRef = useRef<HTMLVideoElement | null>(null)
   const localVideoRef = useRef<HTMLVideoElement | null>(null)
+  const iceCandidateQueueRef = useRef<RTCIceCandidate[]>([])
 
   // 1. Listen for incoming calls & WebRTC signaling
   useEffect(() => {
@@ -46,13 +47,26 @@ export function useWebRTC(currentUserId: string | null, activeConversationId: st
       setCallStartTime(Date.now())
       if (peerConnectionRef.current) {
         await peerConnectionRef.current.setRemoteDescription(new RTCSessionDescription(payload.sdp))
+        // Process queued ICE candidates
+        while (iceCandidateQueueRef.current.length > 0) {
+          const candidate = iceCandidateQueueRef.current.shift()
+          if (candidate) {
+            await peerConnectionRef.current.addIceCandidate(candidate).catch(e => console.error(e))
+          }
+        }
       }
     })
 
     const unsubIce = subscribe('ice_candidate_received', async (payload) => {
       try {
-        if (peerConnectionRef.current && payload.candidate) {
-          await peerConnectionRef.current.addIceCandidate(new RTCIceCandidate(payload.candidate))
+        if (payload.candidate) {
+          const candidate = new RTCIceCandidate(payload.candidate)
+          if (peerConnectionRef.current && peerConnectionRef.current.remoteDescription) {
+            await peerConnectionRef.current.addIceCandidate(candidate)
+          } else {
+            // Queue it until remoteDescription is set
+            iceCandidateQueueRef.current.push(candidate)
+          }
         }
       } catch (e) {
         console.error('Error adding received ice candidate', e)
@@ -168,6 +182,14 @@ export function useWebRTC(currentUserId: string | null, activeConversationId: st
       const pc = createPeerConnection(callerId, stream)
 
       await pc.setRemoteDescription(new RTCSessionDescription(callerSignal))
+      // Process queued ICE candidates
+      while (iceCandidateQueueRef.current.length > 0) {
+        const candidate = iceCandidateQueueRef.current.shift()
+        if (candidate) {
+          await pc.addIceCandidate(candidate).catch(e => console.error(e))
+        }
+      }
+
       const answer = await pc.createAnswer()
       await pc.setLocalDescription(answer)
 
@@ -205,6 +227,7 @@ export function useWebRTC(currentUserId: string | null, activeConversationId: st
     }
 
     setRemoteStream(null)
+    iceCandidateQueueRef.current = []
     
     let duration = 0
     if (callStartTime) {

@@ -4,7 +4,7 @@ export interface User {
   id: string
   username: string
   email?: string
-  avatarUrl?: string | null
+  avatar_url?: string | null
   description?: string
   status: 'ONLINE' | 'AWAY' | 'DO_NOT_DISTURB' | 'OFFLINE'
 }

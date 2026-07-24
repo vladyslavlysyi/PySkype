@@ -151,8 +151,8 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
             className="flex items-center gap-3 cursor-pointer hover:bg-gray-200 dark:hover:bg-[#323130] p-1.5 rounded-xl transition"
             onClick={() => setIsProfileOpen(true)}
           >
-            {partner?.avatarUrl ? (
-              <img src={partner.avatarUrl} alt="avatar" className="w-10 h-10 rounded-full ring-2 ring-gray-100 dark:ring-gray-800" />
+            {partner?.avatar_url ? (
+              <img src={partner.avatar_url} alt="avatar" className="w-10 h-10 rounded-full ring-2 ring-gray-100 dark:ring-gray-800" />
             ) : (
               <UserCircle className="w-10 h-10 text-gray-500" />
             )}

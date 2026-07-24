@@ -151,8 +151,8 @@ export const Sidebar = () => {
           onClick={() => setIsProfileOpen(true)}
         >
           <div className="relative">
-            {currentUser?.avatarUrl ? (
-              <img src={currentUser.avatarUrl} alt="avatar" className="w-10 h-10 rounded-full object-cover" />
+            {currentUser?.avatar_url ? (
+              <img src={currentUser.avatar_url} alt="avatar" className="w-10 h-10 rounded-full object-cover" />
             ) : (
               <UserCircle className="w-10 h-10 text-gray-500 dark:text-gray-400" />
             )}
