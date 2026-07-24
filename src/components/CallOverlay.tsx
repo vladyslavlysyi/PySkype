@@ -95,10 +95,10 @@ export const CallOverlay = ({
             ref={remoteVideoRef} 
             autoPlay 
             playsInline 
-            className={`w-full h-full object-cover ${(!isVideoCall || isVideoOff || !callAccepted) ? 'hidden' : ''}`}
+            className={`w-full h-full object-cover ${(!isVideoCall || !callAccepted) ? 'hidden' : ''}`}
           />
           
-          {(!isVideoCall || isVideoOff || !callAccepted) && (
+          {(!isVideoCall || !callAccepted) && (
             <div className="w-40 h-40 bg-gray-800 rounded-full flex items-center justify-center shadow-2xl">
               <span className="text-6xl text-white font-bold">{callAccepted ? callerName.charAt(0).toUpperCase() : '...'}</span>
             </div>
