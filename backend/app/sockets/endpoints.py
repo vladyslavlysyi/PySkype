@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from ..database import AsyncSessionLocal
-from ..models import User, Message, UserStatus
+from ..models import User, Message, UserStatus, ConversationParticipant
 from ..auth import decode_access_token
 from .manager import manager
 
@@ -64,10 +64,21 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                     })
                 
                 elif event_type == "send_message":
-                    # Save to DB
+                    # Validate user is in conversation
                     conversation_id = payload.get("conversation_id")
                     content = payload.get("content")
                     async with AsyncSessionLocal() as session:
+                        # Verify participant
+                        part_result = await session.execute(
+                            select(ConversationParticipant)
+                            .where(ConversationParticipant.conversation_id == conversation_id)
+                            .where(ConversationParticipant.user_id == user_id)
+                        )
+                        if not part_result.scalars().first():
+                            # User not in conversation, ignore
+                            continue
+
+                        # Save to DB
                         new_msg = Message(conversation_id=conversation_id, sender_id=user_id, content=content)
                         session.add(new_msg)
                         await session.commit()
