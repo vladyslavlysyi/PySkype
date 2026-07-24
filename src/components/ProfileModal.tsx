@@ -44,13 +44,13 @@ export const ProfileModal = ({ user, onClose, isMe = false }: ProfileModalProps)
     try {
       const payload: any = {
         username: formData.username,
-        email: formData.email,
         description: formData.description,
-        avatar_url: formData.avatarUrl,
       }
-      if (formData.password) {
-        payload.password = formData.password
-      }
+      
+      // Pydantic fails validation if email or avatar_url are empty strings
+      if (formData.email) payload.email = formData.email
+      if (formData.avatarUrl) payload.avatar_url = formData.avatarUrl
+      if (formData.password) payload.password = formData.password
       
       const res = await fetch('/api/users/me', {
         method: 'PUT',

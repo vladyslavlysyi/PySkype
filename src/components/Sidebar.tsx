@@ -215,8 +215,12 @@ export const Sidebar = () => {
             ) : (
               searchResults.map(user => (
                 <div key={user.id} onClick={() => startChat(user)} className="flex items-center gap-3 p-2 hover:bg-gray-200 dark:hover:bg-[#323130] rounded-lg cursor-pointer transition">
-                  <div className="relative">
-                    <UserCircle className="w-10 h-10 text-gray-500" />
+                  <div className="relative flex-shrink-0">
+                    {user.avatar_url ? (
+                      <img src={user.avatar_url} alt="avatar" className="w-10 h-10 rounded-full object-cover" />
+                    ) : (
+                      <UserCircle className="w-10 h-10 text-gray-500" />
+                    )}
                     <div className="absolute bottom-0 right-0">{getStatusIcon(user.status)}</div>
                   </div>
                   <div>
@@ -254,7 +258,11 @@ export const Sidebar = () => {
                     className={`relative flex items-center gap-3 p-2 rounded-lg cursor-pointer transition group ${isActive ? 'bg-[#e1dfdd] dark:bg-[#323130]' : 'hover:bg-gray-200 dark:hover:bg-[#323130]'}`}
                   >
                     <div className="relative flex-shrink-0">
-                      <UserCircle className="w-10 h-10 text-gray-500" />
+                      {partner?.avatar_url ? (
+                        <img src={partner.avatar_url} alt="avatar" className="w-10 h-10 rounded-full object-cover" />
+                      ) : (
+                        <UserCircle className="w-10 h-10 text-gray-500" />
+                      )}
                       {partner && <div className="absolute bottom-0 right-0">{getStatusIcon(partner.status)}</div>}
                     </div>
                     <div className="flex-1 min-w-0">
