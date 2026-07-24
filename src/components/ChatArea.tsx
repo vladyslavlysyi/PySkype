@@ -64,7 +64,11 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
     return content.split('\n').map((line, idx) => {
       const imgMatch = line.match(/^!\[(.*?)\]\((.*?)\)$/)
       if (imgMatch) {
-        return <img key={idx} src={imgMatch[2]} alt={imgMatch[1]} className="max-w-full rounded-lg my-1 max-h-64 object-cover" />
+        return (
+          <a key={idx} href={imgMatch[2]} target="_blank" rel="noopener noreferrer" className="block my-1">
+            <img src={imgMatch[2]} alt={imgMatch[1]} className="max-w-full rounded-lg max-h-64 object-cover hover:opacity-90 transition cursor-pointer" />
+          </a>
+        )
       }
       const linkMatch = line.match(/^\[(.*?)\]\((.*?)\)$/)
       if (linkMatch) {
