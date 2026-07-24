@@ -10,6 +10,9 @@ const inter = Inter({ subsets: ['latin'] })
 export const metadata: Metadata = {
   title: 'Skype Web Clone',
   description: 'A modern Skype clone built with Next.js and WebRTC',
+  icons: {
+    icon: '/logo.png',
+  },
 }
 
 export default function RootLayout({
