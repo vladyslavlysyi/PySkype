@@ -6,7 +6,7 @@ import { useAppStore } from '@/store/useAppStore'
 
 export default function LoginPage() {
   const [username, setUsername] = useState('')
-  const [password, setPassword] = useState('password123') // default for easy testing
+  const [password, setPassword] = useState('')
   const [isRegistering, setIsRegistering] = useState(false)
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)

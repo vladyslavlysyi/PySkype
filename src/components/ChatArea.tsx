@@ -5,6 +5,7 @@ import { Phone, Video, MoreHorizontal, Send, Smile, Paperclip, UserCircle, Arrow
 import { useAppStore, Message } from '@/store/useAppStore'
 import { useWebSocket } from '@/contexts/WebSocketContext'
 import { ProfileModal } from './ProfileModal'
+import EmojiPicker from 'emoji-picker-react'
 
 interface ChatAreaProps {
   onStartCall: (video: boolean) => void
@@ -18,7 +19,64 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
   const [text, setText] = useState('')
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [showEmoji, setShowEmoji] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    if (file.size > 5 * 1024 * 1024) {
+      alert("File size exceeds 5MB limit.")
+      return
+    }
+
+    const formData = new FormData()
+    formData.append("file", file)
+
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${localStorage.getItem('token')}` },
+        body: formData
+      })
+      if (!res.ok) throw new Error("Upload failed")
+      
+      const data = await res.json()
+      
+      const isImage = file.type.startsWith("image/")
+      const markdown = isImage ? `![${file.name}](${data.url})` : `[📎 ${file.name}](${data.url})`
+      
+      setText(prev => prev ? `${prev}\n${markdown}` : markdown)
+    } catch (err) {
+      alert("Failed to upload file.")
+    } finally {
+      if (fileInputRef.current) fileInputRef.current.value = ""
+    }
+  }
+
+  const onEmojiClick = (emojiData: any) => {
+    setText(prev => prev + emojiData.emoji)
+  }
+
+  const renderMessageContent = (content: string) => {
+    return content.split('\n').map((line, idx) => {
+      const imgMatch = line.match(/^!\[(.*?)\]\((.*?)\)$/)
+      if (imgMatch) {
+        return <img key={idx} src={imgMatch[2]} alt={imgMatch[1]} className="max-w-full rounded-lg my-1 max-h-64 object-cover" />
+      }
+      const linkMatch = line.match(/^\[(.*?)\]\((.*?)\)$/)
+      if (linkMatch) {
+        return (
+          <a key={idx} href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="underline text-current opacity-90 hover:opacity-100 break-all block my-1">
+            {linkMatch[1]}
+          </a>
+        )
+      }
+      return <span key={idx} className="block">{line}</span>
+    })
+  }
 
   const myPart = activeConversation?.participants.find(p => p.user.id === currentUser?.id)
   const isPinned = myPart?.is_pinned
@@ -219,7 +277,7 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
                   <UserCircle className="w-8 h-8 text-gray-400 mt-auto flex-shrink-0" />
                 )}
                 <div className={`px-4 py-2.5 rounded-2xl ${isMine ? 'bg-[#0078d4] text-white rounded-br-sm' : 'bg-[#f3f2f1] dark:bg-[#201f1e] text-gray-900 dark:text-gray-100 rounded-bl-sm'}`}>
-                  <p className="text-sm leading-relaxed">{msg.content}</p>
+                  <div className="text-sm leading-relaxed">{renderMessageContent(msg.content)}</div>
                 </div>
               </div>
             </div>
@@ -228,9 +286,23 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
       </div>
 
       {/* Input */}
-      <div className="p-4 bg-white dark:bg-[#11100f] border-t border-gray-200 dark:border-gray-800">
+      <div className="p-4 bg-white dark:bg-[#11100f] border-t border-gray-200 dark:border-gray-800 relative">
+        {showEmoji && (
+          <div className="absolute bottom-20 right-4 z-50 shadow-2xl rounded-lg overflow-hidden">
+            <div className="fixed inset-0" onClick={() => setShowEmoji(false)}></div>
+            <div className="relative z-50">
+              <EmojiPicker onEmojiClick={onEmojiClick} theme={typeof window !== 'undefined' && document.documentElement.classList.contains('dark') ? 'dark' : 'light' as any} />
+            </div>
+          </div>
+        )}
         <div className="flex items-end gap-2 bg-[#f3f2f1] dark:bg-[#201f1e] p-2 rounded-xl border border-transparent focus-within:border-[#0078d4] focus-within:bg-white dark:focus-within:bg-[#323130] transition">
-          <button className="p-2 text-gray-500 hover:text-[#0078d4] transition">
+          <input 
+            type="file" 
+            ref={fileInputRef} 
+            onChange={handleFileUpload} 
+            className="hidden" 
+          />
+          <button onClick={() => fileInputRef.current?.click()} className="p-2 text-gray-500 hover:text-[#0078d4] transition">
             <Paperclip className="w-5 h-5" />
           </button>
           <textarea
@@ -246,7 +318,7 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
             className="flex-1 bg-transparent border-none outline-none resize-none max-h-32 text-sm text-gray-900 dark:text-white py-2 custom-scrollbar"
             rows={1}
           />
-          <button className="p-2 text-gray-500 hover:text-[#0078d4] transition">
+          <button onClick={() => setShowEmoji(!showEmoji)} className="p-2 text-gray-500 hover:text-[#0078d4] transition">
             <Smile className="w-5 h-5" />
           </button>
           <button 
