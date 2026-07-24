@@ -42,19 +42,29 @@ interface AppState {
   setSearchResults: (users: User[]) => void
 }
 
-export const useAppStore = create<AppState>((set) => ({
-  currentUser: null,
-  setCurrentUser: (user) => set({ currentUser: user }),
+import { persist } from 'zustand/middleware'
 
-  conversations: [],
-  setConversations: (conversations) => set({ conversations }),
+export const useAppStore = create<AppState>()(
+  persist(
+    (set) => ({
+      currentUser: null,
+      setCurrentUser: (user) => set({ currentUser: user }),
 
-  activeConversation: null,
-  setActiveConversation: (activeConversation) => set({ activeConversation }),
+      conversations: [],
+      setConversations: (conversations) => set({ conversations }),
 
-  searchQuery: '',
-  setSearchQuery: (searchQuery) => set({ searchQuery }),
+      activeConversation: null,
+      setActiveConversation: (activeConversation) => set({ activeConversation }),
 
-  searchResults: [],
-  setSearchResults: (searchResults) => set({ searchResults }),
-}))
+      searchQuery: '',
+      setSearchQuery: (searchQuery) => set({ searchQuery }),
+
+      searchResults: [],
+      setSearchResults: (searchResults) => set({ searchResults }),
+    }),
+    {
+      name: 'skype-storage',
+      partialize: (state) => ({ currentUser: state.currentUser }),
+    }
+  )
+)
