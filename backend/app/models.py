@@ -24,6 +24,8 @@ class User(Base):
     hashed_password = Column(String, nullable=False)
     avatar_url = Column(String, nullable=True)
     description = Column(String, nullable=True, default='')
+    phone_number = Column(String, nullable=True)
+    birthday = Column(String, nullable=True)
     status = Column(Enum(UserStatus), default=UserStatus.OFFLINE, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

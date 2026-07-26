@@ -6,6 +6,8 @@ export interface User {
   email?: string
   avatar_url?: string | null
   description?: string
+  phone_number?: string
+  birthday?: string
   status: 'ONLINE' | 'AWAY' | 'DO_NOT_DISTURB' | 'OFFLINE'
 }
 

@@ -64,6 +64,10 @@ async def update_me(
         current_user.description = user_update.description
     if user_update.avatar_url is not None:
         current_user.avatar_url = user_update.avatar_url
+    if user_update.phone_number is not None:
+        current_user.phone_number = user_update.phone_number
+    if user_update.birthday is not None:
+        current_user.birthday = user_update.birthday
     if user_update.password is not None and user_update.password != "":
         current_user.hashed_password = get_password_hash(user_update.password)
         
