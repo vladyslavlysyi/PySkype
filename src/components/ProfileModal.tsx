@@ -1,17 +1,24 @@
-import React, { useState } from 'react'
-import { UserCircle, X, Mail, Info, Circle, Edit2, Check, Lock, User as UserIcon, Image as ImageIcon, MessageSquare, BellOff, Phone, Video, Calendar, MoreHorizontal, Gift, Bookmark, Image as LucideImage, File, Headphones, Link as LinkIcon } from 'lucide-react'
+import React, { useState, useEffect } from 'react'
+import { UserCircle, X, Mail, Info, Circle, Edit2, Check, Lock, User as UserIcon, Image as ImageIcon, MessageSquare, Phone, Video, Calendar, Image as LucideImage, File, Link as LinkIcon } from 'lucide-react'
 import { User, useAppStore } from '@/store/useAppStore'
 
 interface ProfileModalProps {
   user: User
   onClose: () => void
   isMe?: boolean
+  conversationId?: string
 }
 
-export const ProfileModal = ({ user, onClose, isMe = false }: ProfileModalProps) => {
+interface Message {
+  id: string
+  content: string
+}
+
+export const ProfileModal = ({ user, onClose, isMe = false, conversationId }: ProfileModalProps) => {
   const { setCurrentUser } = useAppStore()
   const [isEditing, setIsEditing] = useState(false)
-  const [activeTab, setActiveTab] = useState('media')
+  const [activeTab, setActiveTab] = useState<'info' | 'media' | 'files' | 'links'>('info')
+  const [messages, setMessages] = useState<Message[]>([])
   
   const [formData, setFormData] = useState({
     username: user.username || '',
@@ -24,12 +31,35 @@ export const ProfileModal = ({ user, onClose, isMe = false }: ProfileModalProps)
   })
   const [isLoading, setIsLoading] = useState(false)
 
+  useEffect(() => {
+    if (conversationId) {
+      fetch(`/api/chats/${conversationId}/messages`, {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (Array.isArray(data)) setMessages(data)
+        else if (data.messages) setMessages(data.messages)
+      })
+      .catch(err => console.error(err))
+    }
+  }, [conversationId])
+
   const getStatusText = (status: string) => {
     switch (status) {
-      case 'ONLINE': return 'last seen just now'
-      case 'AWAY': return 'last seen recently'
-      case 'DO_NOT_DISTURB': return 'do not disturb'
-      default: return 'last seen a long time ago'
+      case 'ONLINE': return 'Active now'
+      case 'AWAY': return 'Away'
+      case 'DO_NOT_DISTURB': return 'Do not disturb'
+      default: return 'Offline'
+    }
+  }
+  
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'ONLINE': return 'text-green-500'
+      case 'AWAY': return 'text-yellow-500'
+      case 'DO_NOT_DISTURB': return 'text-red-500'
+      default: return 'text-gray-400'
     }
   }
 
@@ -70,157 +100,258 @@ export const ProfileModal = ({ user, onClose, isMe = false }: ProfileModalProps)
     }
   }
 
+  // Parse media, files, links from messages
+  const mediaList: { url: string, name: string }[] = []
+  const fileList: { url: string, name: string }[] = []
+  const linkList: { url: string, name: string }[] = []
+
+  messages.forEach(msg => {
+    const lines = msg.content.split('\n')
+    lines.forEach(line => {
+      const imgMatch = line.match(/^!\[(.*?)\]\((.*?)\)$/)
+      if (imgMatch) {
+        mediaList.push({ name: imgMatch[1], url: imgMatch[2] })
+        return
+      }
+      const linkMatch = line.match(/^\[(.*?)\]\((.*?)\)$/)
+      if (linkMatch) {
+        if (linkMatch[1].startsWith('📎 ')) {
+          fileList.push({ name: linkMatch[1].replace('📎 ', ''), url: linkMatch[2] })
+        } else {
+          linkList.push({ name: linkMatch[1], url: linkMatch[2] })
+        }
+      }
+    })
+  })
+
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-0 md:p-4 bg-black/60 backdrop-blur-sm">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
-        className="absolute inset-0"
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
       
       {/* Modal */}
-      <div className="relative bg-[#17212b] w-full h-full md:h-auto md:max-h-[90vh] md:max-w-[400px] md:rounded-2xl shadow-2xl flex flex-col overflow-hidden text-[#f5f5f5]">
+      <div className="relative bg-white dark:bg-[#201f1e] w-full max-w-[400px] h-[90vh] md:h-auto md:max-h-[85vh] rounded-2xl shadow-2xl overflow-hidden transform transition-all flex flex-col">
         
-        {/* Header Actions */}
-        <div className="absolute top-0 left-0 right-0 p-4 flex justify-between items-center z-10">
+        {/* Header Background */}
+        <div className="h-28 bg-gradient-to-r from-[#0078d4] to-[#00bcf2] w-full relative flex-shrink-0">
           <button 
             onClick={onClose}
-            className="p-2 bg-black/20 hover:bg-black/40 rounded-full transition-colors"
+            className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md transition-colors"
           >
-            <X className="w-6 h-6 text-white" />
+            <X className="w-5 h-5" />
           </button>
-          
-          <div className="flex gap-2">
-            {isMe && !isEditing && (
-              <button 
-                onClick={() => setIsEditing(true)}
-                className="p-2 bg-black/20 hover:bg-black/40 rounded-full transition-colors flex items-center gap-2 px-4"
-              >
-                <Edit2 className="w-4 h-4 text-white" />
-                <span className="text-sm font-medium text-white">Edit</span>
-              </button>
-            )}
-            <button className="p-2 bg-black/20 hover:bg-black/40 rounded-full transition-colors">
-              <MoreHorizontal className="w-6 h-6 text-white" />
+          {isMe && !isEditing && (
+            <button 
+              onClick={() => setIsEditing(true)}
+              className="absolute top-4 right-14 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md transition-colors flex items-center gap-2 px-4"
+            >
+              <Edit2 className="w-4 h-4" />
+              <span className="text-sm font-medium">Edit</span>
             </button>
+          )}
+        </div>
+
+        {/* Avatar (Outside scroll container to prevent clipping) */}
+        <div className="absolute top-[64px] left-1/2 -translate-x-1/2 z-10 flex flex-col items-center">
+          <div className="relative inline-block">
+            {user.avatar_url ? (
+              <img 
+                src={user.avatar_url} 
+                alt="avatar" 
+                className="w-24 h-24 rounded-full border-4 border-white dark:border-[#201f1e] object-cover bg-white dark:bg-gray-800" 
+              />
+            ) : (
+              <div className="w-24 h-24 rounded-full border-4 border-white dark:border-[#201f1e] bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+                <UserCircle className="w-16 h-16 text-gray-400" />
+              </div>
+            )}
+            <div className={`absolute bottom-1 right-1 w-5 h-5 rounded-full border-2 border-white dark:border-[#201f1e] bg-current ${getStatusColor(user.status)}`} />
           </div>
         </div>
 
         {/* Scrollable Content */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className="pt-20 overflow-y-auto custom-scrollbar flex-1 flex flex-col">
           {!isEditing ? (
             <>
-              {/* Profile Header section */}
-              <div className="flex flex-col items-center pt-10 pb-4">
-                {user.avatar_url ? (
-                  <img 
-                    src={user.avatar_url} 
-                    alt="avatar" 
-                    className="w-24 h-24 rounded-full object-cover mb-3" 
-                  />
-                ) : (
-                  <UserCircle className="w-24 h-24 text-gray-500 mb-3" />
-                )}
-                
-                <h2 className="text-xl font-semibold text-white">
+              {/* Profile Details */}
+              <div className="flex flex-col items-center px-6 pb-6 border-b border-gray-100 dark:border-gray-800">
+                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                   {user.username}
                 </h2>
-                
-                <div className="flex items-center gap-1.5 mt-1 text-[#708499]">
-                  {user.status === 'ONLINE' && <div className="w-3 h-3 bg-[#42a5f5] rounded-full flex items-center justify-center"><div className="w-1.5 h-1.5 bg-white rounded-full"></div></div>}
-                  <span className="text-sm font-medium">
-                    {getStatusText(user.status)}
-                  </span>
-                </div>
-              </div>
+                <span className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">
+                  {getStatusText(user.status)}
+                </span>
 
-              {/* Action Buttons */}
-              <div className="flex justify-center gap-2 px-4 pb-4 border-b border-gray-800">
-                <button className="flex flex-col items-center justify-center w-[72px] h-[64px] bg-[#232e3c] hover:bg-[#2b3a4a] rounded-2xl transition">
-                  <MessageSquare className="w-6 h-6 mb-1 text-white" />
-                  <span className="text-xs text-white">Message</span>
-                </button>
-                <button className="flex flex-col items-center justify-center w-[72px] h-[64px] bg-[#232e3c] hover:bg-[#2b3a4a] rounded-2xl transition">
-                  <BellOff className="w-6 h-6 mb-1 text-white" />
-                  <span className="text-xs text-white">Mute</span>
-                </button>
-                <button className="flex flex-col items-center justify-center w-[72px] h-[64px] bg-[#232e3c] hover:bg-[#2b3a4a] rounded-2xl transition">
-                  <Phone className="w-6 h-6 mb-1 text-white" />
-                  <span className="text-xs text-white">Call</span>
-                </button>
-                <button className="flex flex-col items-center justify-center w-[72px] h-[64px] bg-[#232e3c] hover:bg-[#2b3a4a] rounded-2xl transition">
-                  <Video className="w-6 h-6 mb-1 text-white" />
-                  <span className="text-xs text-white">Video</span>
-                </button>
-              </div>
-
-              {/* Info Section */}
-              <div className="p-4 space-y-5 border-b border-gray-800">
-                {user.phone_number && (
-                  <div>
-                    <p className="text-[16px] text-white leading-tight">{user.phone_number}</p>
-                    <p className="text-sm text-[#708499]">Mobile</p>
-                  </div>
-                )}
-                
-                {user.description && (
-                  <div>
-                    <p className="text-[16px] text-white leading-tight whitespace-pre-wrap">{user.description}</p>
-                    <p className="text-sm text-[#708499]">Bio</p>
-                  </div>
-                )}
-
-                <div>
-                  <p className="text-[16px] text-[#42a5f5] leading-tight">@{user.username.toLowerCase().replace(/\s+/g, '_')}</p>
-                  <p className="text-sm text-[#708499]">Username</p>
-                </div>
-                
-                {user.birthday && (
-                  <div>
-                    <p className="text-[16px] text-white leading-tight">{user.birthday}</p>
-                    <p className="text-sm text-[#708499]">Birthday</p>
+                {/* Quick Actions */}
+                {!isMe && (
+                  <div className="flex gap-4 mt-6">
+                    <button className="flex flex-col items-center justify-center gap-1 group">
+                      <div className="w-12 h-12 rounded-full bg-[#f3f2f1] dark:bg-[#323130] flex items-center justify-center group-hover:bg-[#0078d4] transition-colors text-gray-700 dark:text-gray-300 group-hover:text-white">
+                        <MessageSquare className="w-5 h-5 fill-current" />
+                      </div>
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400 group-hover:text-[#0078d4]">Chat</span>
+                    </button>
+                    <button className="flex flex-col items-center justify-center gap-1 group">
+                      <div className="w-12 h-12 rounded-full bg-[#f3f2f1] dark:bg-[#323130] flex items-center justify-center group-hover:bg-[#0078d4] transition-colors text-gray-700 dark:text-gray-300 group-hover:text-white">
+                        <Phone className="w-5 h-5 fill-current" />
+                      </div>
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400 group-hover:text-[#0078d4]">Call</span>
+                    </button>
+                    <button className="flex flex-col items-center justify-center gap-1 group">
+                      <div className="w-12 h-12 rounded-full bg-[#f3f2f1] dark:bg-[#323130] flex items-center justify-center group-hover:bg-[#0078d4] transition-colors text-gray-700 dark:text-gray-300 group-hover:text-white">
+                        <Video className="w-5 h-5 fill-current" />
+                      </div>
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400 group-hover:text-[#0078d4]">Video</span>
+                    </button>
                   </div>
                 )}
               </div>
 
-              {/* Mocked List / Tabs */}
-              <div className="p-2 space-y-1">
-                <div className="flex items-center gap-4 p-3 hover:bg-[#232e3c] rounded-xl cursor-pointer transition">
-                  <Gift className="w-6 h-6 text-[#708499]" />
-                  <span className="text-[15px] text-white">0 gifts 🎁</span>
-                </div>
-                <div className="flex items-center gap-4 p-3 hover:bg-[#232e3c] rounded-xl cursor-pointer transition">
-                  <Bookmark className="w-6 h-6 text-[#708499]" />
-                  <span className="text-[15px] text-white">0 saved messages</span>
-                </div>
-                <div className="flex items-center gap-4 p-3 hover:bg-[#232e3c] rounded-xl cursor-pointer transition">
-                  <LucideImage className="w-6 h-6 text-[#708499]" />
-                  <span className="text-[15px] text-white">0 photos</span>
-                </div>
-                <div className="flex items-center gap-4 p-3 hover:bg-[#232e3c] rounded-xl cursor-pointer transition">
-                  <Video className="w-6 h-6 text-[#708499]" />
-                  <span className="text-[15px] text-white">0 videos</span>
-                </div>
-                <div className="flex items-center gap-4 p-3 hover:bg-[#232e3c] rounded-xl cursor-pointer transition">
-                  <File className="w-6 h-6 text-[#708499]" />
-                  <span className="text-[15px] text-white">0 files</span>
-                </div>
-                <div className="flex items-center gap-4 p-3 hover:bg-[#232e3c] rounded-xl cursor-pointer transition">
-                  <Headphones className="w-6 h-6 text-[#708499]" />
-                  <span className="text-[15px] text-white">0 audio files</span>
-                </div>
-                <div className="flex items-center gap-4 p-3 hover:bg-[#232e3c] rounded-xl cursor-pointer transition">
-                  <LinkIcon className="w-6 h-6 text-[#708499]" />
-                  <span className="text-[15px] text-white">0 shared links</span>
-                </div>
+              {/* Tabs */}
+              <div className="flex px-4 border-b border-gray-100 dark:border-gray-800">
+                <button 
+                  onClick={() => setActiveTab('info')}
+                  className={`flex-1 py-3 text-sm font-semibold transition-colors border-b-2 ${activeTab === 'info' ? 'border-[#0078d4] text-[#0078d4]' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                >
+                  Info
+                </button>
+                {conversationId && (
+                  <>
+                    <button 
+                      onClick={() => setActiveTab('media')}
+                      className={`flex-1 py-3 text-sm font-semibold transition-colors border-b-2 flex items-center justify-center gap-1 ${activeTab === 'media' ? 'border-[#0078d4] text-[#0078d4]' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                    >
+                      Media {mediaList.length > 0 && <span className="bg-gray-100 dark:bg-gray-800 text-xs px-1.5 py-0.5 rounded-md text-gray-500">{mediaList.length}</span>}
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('files')}
+                      className={`flex-1 py-3 text-sm font-semibold transition-colors border-b-2 flex items-center justify-center gap-1 ${activeTab === 'files' ? 'border-[#0078d4] text-[#0078d4]' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                    >
+                      Files {fileList.length > 0 && <span className="bg-gray-100 dark:bg-gray-800 text-xs px-1.5 py-0.5 rounded-md text-gray-500">{fileList.length}</span>}
+                    </button>
+                    <button 
+                      onClick={() => setActiveTab('links')}
+                      className={`flex-1 py-3 text-sm font-semibold transition-colors border-b-2 flex items-center justify-center gap-1 ${activeTab === 'links' ? 'border-[#0078d4] text-[#0078d4]' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                    >
+                      Links {linkList.length > 0 && <span className="bg-gray-100 dark:bg-gray-800 text-xs px-1.5 py-0.5 rounded-md text-gray-500">{linkList.length}</span>}
+                    </button>
+                  </>
+                )}
+              </div>
+
+              {/* Tab Content */}
+              <div className="flex-1 p-6">
+                {activeTab === 'info' && (
+                  <div className="space-y-5">
+                    {user.phone_number && (
+                      <div className="flex items-center gap-4">
+                        <Phone className="w-5 h-5 text-[#0078d4]" />
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white">{user.phone_number}</p>
+                          <p className="text-xs text-gray-500">Mobile</p>
+                        </div>
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center gap-4">
+                      <UserIcon className="w-5 h-5 text-[#0078d4]" />
+                      <div>
+                        <p className="text-sm font-semibold text-gray-900 dark:text-white">@{user.username.toLowerCase().replace(/\s+/g, '_')}</p>
+                        <p className="text-xs text-gray-500">Username</p>
+                      </div>
+                    </div>
+
+                    {user.birthday && (
+                      <div className="flex items-center gap-4">
+                        <Calendar className="w-5 h-5 text-[#0078d4]" />
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white">{user.birthday}</p>
+                          <p className="text-xs text-gray-500">Birthday</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {user.description && (
+                      <div className="flex items-start gap-4">
+                        <Info className="w-5 h-5 text-[#0078d4] mt-0.5" />
+                        <div>
+                          <p className="text-sm font-semibold text-gray-900 dark:text-white whitespace-pre-wrap">{user.description}</p>
+                          <p className="text-xs text-gray-500">About</p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'media' && (
+                  <div>
+                    {mediaList.length > 0 ? (
+                      <div className="grid grid-cols-3 gap-2">
+                        {mediaList.map((m, i) => (
+                          <a key={i} href={m.url} target="_blank" rel="noopener noreferrer" className="aspect-square bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden group">
+                            <img src={m.url} alt={m.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform" />
+                          </a>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-gray-500 py-10">
+                        <LucideImage className="w-12 h-12 mb-3 opacity-20" />
+                        <p className="text-sm">No media shared yet</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'files' && (
+                  <div className="space-y-3">
+                    {fileList.length > 0 ? (
+                      fileList.map((f, i) => (
+                        <a key={i} href={f.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-[#11100f] hover:bg-gray-100 dark:hover:bg-[#323130] transition border border-gray-100 dark:border-gray-800 group">
+                          <div className="w-10 h-10 rounded-lg bg-[#0078d4]/10 flex items-center justify-center text-[#0078d4] group-hover:bg-[#0078d4] group-hover:text-white transition">
+                            <File className="w-5 h-5" />
+                          </div>
+                          <span className="text-sm font-medium text-gray-900 dark:text-white truncate flex-1">{f.name}</span>
+                        </a>
+                      ))
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-gray-500 py-10">
+                        <File className="w-12 h-12 mb-3 opacity-20" />
+                        <p className="text-sm">No files shared yet</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'links' && (
+                  <div className="space-y-3">
+                    {linkList.length > 0 ? (
+                      linkList.map((l, i) => (
+                        <a key={i} href={l.url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-3 p-3 rounded-xl bg-gray-50 dark:bg-[#11100f] hover:bg-gray-100 dark:hover:bg-[#323130] transition border border-gray-100 dark:border-gray-800 group">
+                          <div className="w-10 h-10 rounded-lg bg-[#0078d4]/10 flex items-center justify-center text-[#0078d4] group-hover:bg-[#0078d4] group-hover:text-white transition">
+                            <LinkIcon className="w-5 h-5" />
+                          </div>
+                          <span className="text-sm font-medium text-[#0078d4] truncate flex-1 hover:underline">{l.url}</span>
+                        </a>
+                      ))
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-gray-500 py-10">
+                        <LinkIcon className="w-12 h-12 mb-3 opacity-20" />
+                        <p className="text-sm">No links shared yet</p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </>
           ) : (
-            <div className="p-6 pt-16 space-y-4 bg-white dark:bg-[#201f1e] min-h-full">
+            <div className="p-6 space-y-4">
               <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Edit Profile</h2>
               <div>
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Username</label>
-                <div className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 dark:bg-[#11100f] border border-gray-200 dark:border-gray-700 focus-within:border-[#42a5f5] transition">
+                <div className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 dark:bg-[#11100f] border border-gray-200 dark:border-gray-700 focus-within:border-[#0078d4] transition">
                   <UserIcon className="w-5 h-5 text-gray-400" />
                   <input 
                     type="text" 
@@ -233,7 +364,7 @@ export const ProfileModal = ({ user, onClose, isMe = false }: ProfileModalProps)
 
               <div>
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Phone Number</label>
-                <div className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 dark:bg-[#11100f] border border-gray-200 dark:border-gray-700 focus-within:border-[#42a5f5] transition">
+                <div className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 dark:bg-[#11100f] border border-gray-200 dark:border-gray-700 focus-within:border-[#0078d4] transition">
                   <Phone className="w-5 h-5 text-gray-400" />
                   <input 
                     type="tel" 
@@ -247,7 +378,7 @@ export const ProfileModal = ({ user, onClose, isMe = false }: ProfileModalProps)
 
               <div>
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Birthday</label>
-                <div className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 dark:bg-[#11100f] border border-gray-200 dark:border-gray-700 focus-within:border-[#42a5f5] transition">
+                <div className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 dark:bg-[#11100f] border border-gray-200 dark:border-gray-700 focus-within:border-[#0078d4] transition">
                   <Calendar className="w-5 h-5 text-gray-400" />
                   <input 
                     type="text" 
@@ -261,7 +392,7 @@ export const ProfileModal = ({ user, onClose, isMe = false }: ProfileModalProps)
 
               <div>
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Bio</label>
-                <div className="flex items-start gap-3 p-2 rounded-xl bg-gray-50 dark:bg-[#11100f] border border-gray-200 dark:border-gray-700 focus-within:border-[#42a5f5] transition">
+                <div className="flex items-start gap-3 p-2 rounded-xl bg-gray-50 dark:bg-[#11100f] border border-gray-200 dark:border-gray-700 focus-within:border-[#0078d4] transition">
                   <Info className="w-5 h-5 text-gray-400 mt-0.5" />
                   <textarea 
                     value={formData.description}
@@ -275,7 +406,7 @@ export const ProfileModal = ({ user, onClose, isMe = false }: ProfileModalProps)
 
               <div>
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Avatar Image URL</label>
-                <div className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 dark:bg-[#11100f] border border-gray-200 dark:border-gray-700 focus-within:border-[#42a5f5] transition">
+                <div className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 dark:bg-[#11100f] border border-gray-200 dark:border-gray-700 focus-within:border-[#0078d4] transition">
                   <ImageIcon className="w-5 h-5 text-gray-400" />
                   <input 
                     type="url"
@@ -289,7 +420,7 @@ export const ProfileModal = ({ user, onClose, isMe = false }: ProfileModalProps)
 
               <div>
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Email address</label>
-                <div className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 dark:bg-[#11100f] border border-gray-200 dark:border-gray-700 focus-within:border-[#42a5f5] transition">
+                <div className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 dark:bg-[#11100f] border border-gray-200 dark:border-gray-700 focus-within:border-[#0078d4] transition">
                   <Mail className="w-5 h-5 text-gray-400" />
                   <input 
                     type="email" 
@@ -302,7 +433,7 @@ export const ProfileModal = ({ user, onClose, isMe = false }: ProfileModalProps)
 
               <div>
                 <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Change Password (optional)</label>
-                <div className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 dark:bg-[#11100f] border border-gray-200 dark:border-gray-700 focus-within:border-[#42a5f5] transition">
+                <div className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 dark:bg-[#11100f] border border-gray-200 dark:border-gray-700 focus-within:border-[#0078d4] transition">
                   <Lock className="w-5 h-5 text-gray-400" />
                   <input 
                     type="password"
@@ -324,7 +455,7 @@ export const ProfileModal = ({ user, onClose, isMe = false }: ProfileModalProps)
                 <button 
                   onClick={handleSave}
                   disabled={isLoading}
-                  className="flex-1 py-2.5 rounded-xl bg-[#42a5f5] text-white font-medium hover:bg-[#2b8cdb] transition flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="flex-1 py-2.5 rounded-xl bg-[#0078d4] text-white font-medium hover:bg-[#005a9e] transition flex items-center justify-center gap-2 disabled:opacity-50"
                 >
                   {isLoading ? (
                     <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />

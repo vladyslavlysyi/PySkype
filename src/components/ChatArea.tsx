@@ -339,6 +339,7 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
         <ProfileModal 
           user={partner} 
           onClose={() => setIsProfileOpen(false)} 
+          conversationId={activeConversation.id}
         />
       )}
     </div>
