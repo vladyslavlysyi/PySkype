@@ -188,19 +188,19 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId }: Pr
                 {/* Quick Actions */}
                 {!isMe && (
                   <div className="flex gap-4 mt-6">
-                    <button className="flex flex-col items-center justify-center gap-1 group">
+                    <button onClick={onClose} className="flex flex-col items-center justify-center gap-1 group">
                       <div className="w-12 h-12 rounded-full bg-[#f3f2f1] dark:bg-[#323130] flex items-center justify-center group-hover:bg-[#0078d4] transition-colors text-gray-700 dark:text-gray-300 group-hover:text-white">
                         <MessageSquare className="w-5 h-5 fill-current" />
                       </div>
-                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400 group-hover:text-[#0078d4]">Chat</span>
+                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400 group-hover:text-[#0078d4]">Message</span>
                     </button>
-                    <button className="flex flex-col items-center justify-center gap-1 group">
+                    <button onClick={() => alert('Call feature coming soon!')} className="flex flex-col items-center justify-center gap-1 group">
                       <div className="w-12 h-12 rounded-full bg-[#f3f2f1] dark:bg-[#323130] flex items-center justify-center group-hover:bg-[#0078d4] transition-colors text-gray-700 dark:text-gray-300 group-hover:text-white">
                         <Phone className="w-5 h-5 fill-current" />
                       </div>
                       <span className="text-xs font-medium text-gray-600 dark:text-gray-400 group-hover:text-[#0078d4]">Call</span>
                     </button>
-                    <button className="flex flex-col items-center justify-center gap-1 group">
+                    <button onClick={() => alert('Video feature coming soon!')} className="flex flex-col items-center justify-center gap-1 group">
                       <div className="w-12 h-12 rounded-full bg-[#f3f2f1] dark:bg-[#323130] flex items-center justify-center group-hover:bg-[#0078d4] transition-colors text-gray-700 dark:text-gray-300 group-hover:text-white">
                         <Video className="w-5 h-5 fill-current" />
                       </div>
