@@ -8,6 +8,7 @@ export interface User {
   description?: string
   phone_number?: string
   birthday?: string
+  theme_color?: string
   status: 'ONLINE' | 'AWAY' | 'DO_NOT_DISTURB' | 'OFFLINE'
 }
 

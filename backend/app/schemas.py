@@ -30,12 +30,14 @@ class UserUpdate(BaseModel):
     avatar_url: Optional[str] = None
     phone_number: Optional[str] = None
     birthday: Optional[str] = None
+    theme_color: Optional[str] = None
 
 class UserResponse(UserBase):
     id: str
     avatar_url: Optional[str] = None
     phone_number: Optional[str] = None
     birthday: Optional[str] = None
+    theme_color: Optional[str] = None
     status: UserStatus
     is_active: bool
     created_at: datetime

@@ -68,6 +68,8 @@ async def update_me(
         current_user.phone_number = user_update.phone_number
     if user_update.birthday is not None:
         current_user.birthday = user_update.birthday
+    if user_update.theme_color is not None:
+        current_user.theme_color = user_update.theme_color
     if user_update.password is not None and user_update.password != "":
         current_user.hashed_password = get_password_hash(user_update.password)
         

@@ -26,6 +26,7 @@ class User(Base):
     description = Column(String, nullable=True, default='')
     phone_number = Column(String, nullable=True)
     birthday = Column(String, nullable=True)
+    theme_color = Column(String, nullable=True)
     status = Column(Enum(UserStatus), default=UserStatus.OFFLINE, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())

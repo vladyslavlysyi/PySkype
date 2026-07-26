@@ -27,10 +27,35 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
     description: user.description || '',
     phone_number: user.phone_number || '',
     birthday: user.birthday || '',
+    theme_color: user.theme_color || '',
     avatarUrl: user.avatar_url || '',
     password: ''
   })
   const [isLoading, setIsLoading] = useState(false)
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setIsLoading(true)
+    const fd = new FormData()
+    fd.append("file", file)
+    try {
+      const res = await fetch("/api/upload", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${localStorage.getItem('token')}` },
+        body: fd
+      })
+      if (res.ok) {
+        const data = await res.json()
+        setFormData({ ...formData, avatarUrl: data.url })
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   useEffect(() => {
     if (conversationId) {
@@ -71,7 +96,8 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
         username: formData.username,
         description: formData.description,
         phone_number: formData.phone_number,
-        birthday: formData.birthday
+        birthday: formData.birthday,
+        theme_color: formData.theme_color
       }
       
       if (formData.email) payload.email = formData.email
@@ -137,7 +163,10 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
       <div className="relative bg-white dark:bg-[#201f1e] w-full max-w-[400px] h-[90vh] md:h-auto md:max-h-[85vh] rounded-2xl shadow-2xl overflow-hidden transform transition-all flex flex-col">
         
         {/* Header Background */}
-        <div className="h-28 bg-gradient-to-r from-[#0078d4] to-[#00bcf2] w-full relative flex-shrink-0">
+        <div 
+          className="h-28 w-full relative flex-shrink-0 transition-all duration-300"
+          style={{ background: (isEditing ? formData.theme_color : user.theme_color) || 'linear-gradient(to right, #0078d4, #00bcf2)' }}
+        >
           <button 
             onClick={onClose}
             className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md transition-colors"
@@ -157,19 +186,28 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
 
         {/* Avatar (Outside scroll container to prevent clipping) */}
         <div className="absolute top-[64px] left-1/2 -translate-x-1/2 z-10 flex flex-col items-center">
-          <div className="relative inline-block">
-            {user.avatar_url ? (
-              <img 
-                src={user.avatar_url} 
-                alt="avatar" 
-                className="w-24 h-24 rounded-full border-4 border-white dark:border-[#201f1e] object-cover bg-white dark:bg-gray-800" 
-              />
-            ) : (
-              <div className="w-24 h-24 rounded-full border-4 border-white dark:border-[#201f1e] bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+          <div className="relative inline-block group">
+            <div className="relative overflow-hidden rounded-full w-24 h-24 border-4 border-white dark:border-[#201f1e] bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
+              {(isEditing ? formData.avatarUrl : user.avatar_url) ? (
+                <img 
+                  src={isEditing ? formData.avatarUrl : user.avatar_url} 
+                  alt="avatar" 
+                  className="w-full h-full object-cover bg-white dark:bg-gray-800" 
+                />
+              ) : (
                 <UserCircle className="w-16 h-16 text-gray-400" />
-              </div>
-            )}
-            <div className={`absolute bottom-1 right-1 w-5 h-5 rounded-full border-2 border-white dark:border-[#201f1e] bg-current ${getStatusColor(user.status)}`} />
+              )}
+              {isEditing && (
+                <div 
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute inset-0 bg-black/40 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                >
+                  <Edit2 className="w-6 h-6 text-white" />
+                </div>
+              )}
+            </div>
+            {!isEditing && <div className={`absolute bottom-1 right-1 w-5 h-5 rounded-full border-2 border-white dark:border-[#201f1e] bg-current ${getStatusColor(user.status)}`} />}
+            <input type="file" ref={fileInputRef} onChange={handleAvatarUpload} className="hidden" accept="image/*" />
           </div>
         </div>
 
@@ -406,16 +444,23 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
               </div>
 
               <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Avatar Image URL</label>
-                <div className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 dark:bg-[#11100f] border border-gray-200 dark:border-gray-700 focus-within:border-[#0078d4] transition">
-                  <ImageIcon className="w-5 h-5 text-gray-400" />
-                  <input 
-                    type="url"
-                    placeholder="https://example.com/image.jpg"
-                    value={formData.avatarUrl}
-                    onChange={e => setFormData({...formData, avatarUrl: e.target.value})}
-                    className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 dark:text-white"
-                  />
+                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Theme Color</label>
+                <div className="flex flex-wrap gap-3">
+                  {[
+                    'linear-gradient(to right, #0078d4, #00bcf2)',
+                    'linear-gradient(to right, #8a2be2, #4b0082)',
+                    'linear-gradient(to right, #ff7e5f, #feb47b)',
+                    'linear-gradient(to right, #00b4db, #0083b0)',
+                    'linear-gradient(to right, #11998e, #38ef7d)',
+                    'linear-gradient(to right, #333333, #000000)',
+                  ].map((color, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => setFormData({...formData, theme_color: color})}
+                      className={`w-8 h-8 rounded-full border-2 transition-transform ${formData.theme_color === color || (!formData.theme_color && idx === 0) ? 'border-white dark:border-white scale-110 shadow-lg' : 'border-transparent hover:scale-105'}`}
+                      style={{ background: color }}
+                    />
+                  ))}
                 </div>
               </div>
 
