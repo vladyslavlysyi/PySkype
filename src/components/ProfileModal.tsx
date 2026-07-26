@@ -199,7 +199,7 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
             <div className="relative overflow-hidden rounded-full w-24 h-24 border-4 border-white dark:border-[#201f1e] bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
               {(isEditing ? formData.avatarUrl : user.avatar_url) ? (
                 <img 
-                  src={isEditing ? formData.avatarUrl : user.avatar_url} 
+                  src={(isEditing ? formData.avatarUrl : user.avatar_url) || undefined} 
                   alt="avatar" 
                   className="w-full h-full object-cover bg-white dark:bg-gray-800" 
                 />
