@@ -1,6 +1,7 @@
 'use client'
 
 import React, { createContext, useContext, useEffect, useState, useRef, ReactNode } from 'react'
+import { useAppStore } from '@/store/useAppStore'
 
 interface WebSocketContextType {
   socket: WebSocket | null
@@ -22,10 +23,11 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
   const [socket, setSocket] = useState<WebSocket | null>(null)
   const [isConnected, setIsConnected] = useState(false)
   const listenersRef = useRef<Map<string, Set<(payload: any) => void>>>(new Map())
+  const currentUser = useAppStore(state => state.currentUser)
 
   useEffect(() => {
     const token = localStorage.getItem('token')
-    if (!token) return
+    if (!token || !currentUser) return
 
     // Use the environment variable, fallback to localhost for development
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/api/ws'
@@ -52,8 +54,10 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
 
     return () => {
       ws.close()
+      setIsConnected(false)
+      setSocket(null)
     }
-  }, [])
+  }, [currentUser?.id])
 
   const sendMessage = (type: string, payload: any = {}, targetUserId?: string) => {
     if (socket && socket.readyState === WebSocket.OPEN) {
