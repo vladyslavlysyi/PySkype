@@ -7,6 +7,7 @@ interface ProfileModalProps {
   onClose: () => void
   isMe?: boolean
   conversationId?: string
+  onStartCall?: (video: boolean) => void
 }
 
 interface Message {
@@ -14,7 +15,7 @@ interface Message {
   content: string
 }
 
-export const ProfileModal = ({ user, onClose, isMe = false, conversationId }: ProfileModalProps) => {
+export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onStartCall }: ProfileModalProps) => {
   const { setCurrentUser } = useAppStore()
   const [isEditing, setIsEditing] = useState(false)
   const [activeTab, setActiveTab] = useState<'info' | 'media' | 'files' | 'links'>('info')
@@ -194,13 +195,13 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId }: Pr
                       </div>
                       <span className="text-xs font-medium text-gray-600 dark:text-gray-400 group-hover:text-[#0078d4]">Message</span>
                     </button>
-                    <button onClick={() => alert('Call feature coming soon!')} className="flex flex-col items-center justify-center gap-1 group">
+                    <button onClick={() => { if (onStartCall) onStartCall(false); onClose(); }} className="flex flex-col items-center justify-center gap-1 group">
                       <div className="w-12 h-12 rounded-full bg-[#f3f2f1] dark:bg-[#323130] flex items-center justify-center group-hover:bg-[#0078d4] transition-colors text-gray-700 dark:text-gray-300 group-hover:text-white">
                         <Phone className="w-5 h-5 fill-current" />
                       </div>
                       <span className="text-xs font-medium text-gray-600 dark:text-gray-400 group-hover:text-[#0078d4]">Call</span>
                     </button>
-                    <button onClick={() => alert('Video feature coming soon!')} className="flex flex-col items-center justify-center gap-1 group">
+                    <button onClick={() => { if (onStartCall) onStartCall(true); onClose(); }} className="flex flex-col items-center justify-center gap-1 group">
                       <div className="w-12 h-12 rounded-full bg-[#f3f2f1] dark:bg-[#323130] flex items-center justify-center group-hover:bg-[#0078d4] transition-colors text-gray-700 dark:text-gray-300 group-hover:text-white">
                         <Video className="w-5 h-5 fill-current" />
                       </div>

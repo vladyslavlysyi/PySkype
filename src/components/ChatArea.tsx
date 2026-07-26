@@ -340,6 +340,7 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
           user={partner} 
           onClose={() => setIsProfileOpen(false)} 
           conversationId={activeConversation.id}
+          onStartCall={onStartCall}
         />
       )}
     </div>
