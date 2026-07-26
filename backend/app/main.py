@@ -29,10 +29,22 @@ app.include_router(endpoints.router, prefix="/api")
 
 @app.on_event("startup")
 async def startup():
+    from sqlalchemy import text
     # create db tables if they don't exist
     async with engine.begin() as conn:
         # In production, use Alembic migrations instead of create_all
         await conn.run_sync(Base.metadata.create_all)
+        
+        # Auto-migrate new columns
+        try:
+            await conn.execute(text("ALTER TABLE users ADD COLUMN phone_number VARCHAR;"))
+        except Exception:
+            pass
+            
+        try:
+            await conn.execute(text("ALTER TABLE users ADD COLUMN birthday VARCHAR;"))
+        except Exception:
+            pass
 
 @app.get("/health")
 def health_check():
