@@ -36,20 +36,24 @@ async def startup():
         await conn.run_sync(Base.metadata.create_all)
         
         # Auto-migrate new columns
-        try:
+        
+    try:
+        async with engine.begin() as conn:
             await conn.execute(text("ALTER TABLE users ADD COLUMN phone_number VARCHAR;"))
-        except Exception:
-            pass
-            
-        try:
+    except Exception:
+        pass
+        
+    try:
+        async with engine.begin() as conn:
             await conn.execute(text("ALTER TABLE users ADD COLUMN birthday VARCHAR;"))
-        except Exception:
-            pass
-            
-        try:
+    except Exception:
+        pass
+        
+    try:
+        async with engine.begin() as conn:
             await conn.execute(text("ALTER TABLE users ADD COLUMN theme_color VARCHAR;"))
-        except Exception:
-            pass
+    except Exception:
+        pass
 
 @app.get("/health")
 def health_check():
