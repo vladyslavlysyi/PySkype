@@ -73,7 +73,6 @@ async def get_messages(conversation_id: str, db: AsyncSession = Depends(get_db),
         select(Message)
         .where(Message.conversation_id == conversation_id)
         .order_by(Message.created_at.desc())
-        .limit(50)
         .options(selectinload(Message.sender))
     )
     messages = result.scalars().all()

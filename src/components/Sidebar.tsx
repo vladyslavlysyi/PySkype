@@ -4,30 +4,47 @@ import React, { useEffect, useState } from 'react'
 import { Search, UserCircle, MessageSquare, Phone, MoreVertical, CheckCircle2, Clock, XCircle, Moon } from 'lucide-react'
 import { useAppStore, User } from '@/store/useAppStore'
 import { ProfileModal } from './ProfileModal'
+import { useWebSocket } from '@/contexts/WebSocketContext'
 
 export const Sidebar = () => {
   const { currentUser, conversations, setConversations, activeConversation, setActiveConversation, searchQuery, setSearchQuery, searchResults, setSearchResults } = useAppStore()
   const [isSearching, setIsSearching] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const { isConnected, subscribe } = useWebSocket()
 
-  // Fetch conversations
+  const fetchConversations = async () => {
+    try {
+      const res = await fetch('/api/users/conversations', {
+        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      })
+      const data = await res.json()
+      if (Array.isArray(data)) {
+        setConversations(data)
+      }
+    } catch (err) {
+      console.error("Failed to fetch conversations", err)
+    }
+  }
+
+  // Fetch conversations on mount / user change
   useEffect(() => {
     if (!currentUser) return
-    const fetchConversations = async () => {
-      try {
-        const res = await fetch('/api/users/conversations', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-        })
-        const data = await res.json()
-        if (Array.isArray(data)) {
-          setConversations(data)
-        }
-      } catch (err) {
-        console.error("Failed to fetch conversations", err)
-      }
-    }
     fetchConversations()
   }, [currentUser, setConversations])
+
+  // Listen for new messages to refresh conversation list if needed
+  useEffect(() => {
+    if (!isConnected) return
+
+    const unsub = subscribe('receive_message', (msg: any) => {
+      const currentConvs = useAppStore.getState().conversations
+      if (!currentConvs.some(c => c.id === msg.conversation_id)) {
+        fetchConversations()
+      }
+    })
+
+    return () => unsub()
+  }, [isConnected, subscribe])
 
   // Mock search debounce
   useEffect(() => {
