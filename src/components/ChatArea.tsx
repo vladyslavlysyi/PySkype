@@ -237,7 +237,7 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
       if (msg.conversation_id === activeConversation?.id) {
         setMessages(prev => [...prev, msg])
         // Mark as read immediately if we are viewing this chat
-        if (msg.sender_id !== currentUser?.id) {
+        if (msg.sender_id !== currentUser?.id && activeConversation?.id) {
           sendMessage('mark_read', { conversation_id: activeConversation.id })
         }
       }
