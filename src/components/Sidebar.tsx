@@ -255,7 +255,7 @@ export const Sidebar = () => {
                     key={conv.id} 
                     onClick={() => setActiveConversation(conv)}
                     onContextMenu={(e) => { e.preventDefault(); setContextMenuId(conv.id) }}
-                    className={`relative flex items-center gap-3 p-2 rounded-lg cursor-pointer transition group ${isActive ? 'bg-[#e1dfdd] dark:bg-[#323130]' : 'hover:bg-gray-200 dark:hover:bg-[#323130]'}`}
+                    className={`relative flex items-center gap-3 p-2 rounded-lg cursor-pointer transition group ${isActive ? 'bg-[#e1dfdd] dark:bg-[#2b5278]' : 'hover:bg-gray-200 dark:hover:bg-[#323130]'}`}
                   >
                     <div className="relative flex-shrink-0">
                       {partner?.avatar_url ? (
