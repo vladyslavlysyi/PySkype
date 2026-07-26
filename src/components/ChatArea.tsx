@@ -62,7 +62,8 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
 
   const renderMessageContent = (content: string) => {
     return content.split('\n').map((line, idx) => {
-      const imgMatch = line.match(/^!\[(.*?)\]\((.*?)\)$/)
+      const trimmedLine = line.trim()
+      const imgMatch = trimmedLine.match(/^!\[(.*?)\]\((.*?)\)$/)
       if (imgMatch) {
         return (
           <a key={idx} href={imgMatch[2]} target="_blank" rel="noopener noreferrer" className="block my-1">
@@ -70,7 +71,7 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
           </a>
         )
       }
-      const linkMatch = line.match(/^\[(.*?)\]\((.*?)\)$/)
+      const linkMatch = trimmedLine.match(/^\[(.*?)\]\((.*?)\)$/)
       if (linkMatch) {
         return (
           <a key={idx} href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="underline text-current opacity-90 hover:opacity-100 break-all block my-1">
@@ -78,7 +79,18 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
           </a>
         )
       }
-      return <span key={idx} className="block">{line}</span>
+      
+      const parts = line.split(/(https?:\/\/[^\s]+)/g)
+      return (
+        <span key={idx} className="block break-words whitespace-pre-wrap">
+          {parts.map((part, i) => {
+            if (part.match(/^https?:\/\//)) {
+              return <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="underline text-current opacity-90 hover:opacity-100 break-all">{part}</a>
+            }
+            return part
+          })}
+        </span>
+      )
     })
   }
 

@@ -135,18 +135,27 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
   messages.forEach(msg => {
     const lines = msg.content.split('\n')
     lines.forEach(line => {
-      const imgMatch = line.match(/^!\[(.*?)\]\((.*?)\)$/)
+      const trimmedLine = line.trim()
+      const imgMatch = trimmedLine.match(/^!\[(.*?)\]\((.*?)\)$/)
       if (imgMatch) {
         mediaList.push({ name: imgMatch[1], url: imgMatch[2] })
         return
       }
-      const linkMatch = line.match(/^\[(.*?)\]\((.*?)\)$/)
+      const linkMatch = trimmedLine.match(/^\[(.*?)\]\((.*?)\)$/)
       if (linkMatch) {
         if (linkMatch[1].startsWith('📎 ')) {
           fileList.push({ name: linkMatch[1].replace('📎 ', ''), url: linkMatch[2] })
         } else {
           linkList.push({ name: linkMatch[1], url: linkMatch[2] })
         }
+        return
+      }
+      
+      const rawUrlMatches = line.match(/(https?:\/\/[^\s]+)/g)
+      if (rawUrlMatches) {
+        rawUrlMatches.forEach(url => {
+          linkList.push({ name: url, url: url })
+        })
       }
     })
   })
