@@ -29,7 +29,7 @@ from ..schemas import ConversationResponse
 
 @router.get("/conversations", response_model=List[ConversationResponse])
 async def get_conversations(db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
-    # Find conversations where the user is a participant and the conversation has at least one message
+    # Find conversations where the user is a participant
     result = await db.execute(
         select(Conversation)
         .join(ConversationParticipant)
@@ -41,7 +41,34 @@ async def get_conversations(db: AsyncSession = Depends(get_db), current_user: Us
         )
     )
     conversations = result.scalars().all()
-    return conversations
+    
+    response_data = []
+    for conv in conversations:
+        # Get the latest message for this conversation
+        msg_result = await db.execute(
+            select(Message)
+            .where(Message.conversation_id == conv.id)
+            .order_by(Message.created_at.desc())
+            .limit(1)
+        )
+        last_msg = msg_result.scalars().first()
+        
+        # Convert model to dict for response
+        conv_dict = {
+            "id": conv.id,
+            "type": conv.type,
+            "created_at": conv.created_at,
+            "participants": conv.participants,
+            "last_message": {
+                "content": last_msg.content,
+                "created_at": last_msg.created_at.isoformat() if last_msg else None,
+                "is_read": last_msg.is_read if hasattr(last_msg, 'is_read') else False,
+                "sender_id": last_msg.sender_id
+            } if last_msg else None
+        }
+        response_data.append(conv_dict)
+        
+    return response_data
 
 @router.get("/me", response_model=UserResponse)
 async def get_me(current_user: User = Depends(get_current_user)):

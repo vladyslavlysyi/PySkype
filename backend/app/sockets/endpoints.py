@@ -97,6 +97,7 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                             "conversation_id": loaded_msg.conversation_id,
                             "sender_id": loaded_msg.sender_id,
                             "content": loaded_msg.content,
+                            "is_read": loaded_msg.is_read if hasattr(loaded_msg, 'is_read') else False,
                             "created_at": loaded_msg.created_at.isoformat(),
                             "sender": {
                                 "id": loaded_msg.sender.id,
@@ -116,6 +117,40 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                         "type": "receive_message",
                         "payload": msg_payload
                     }, user_id)
+
+                elif event_type == "mark_read":
+                    conversation_id = payload.get("conversation_id")
+                    if conversation_id:
+                        async with AsyncSessionLocal() as session:
+                            # Update all messages in this conversation not sent by this user
+                            from sqlalchemy import update
+                            stmt = (
+                                update(Message)
+                                .where(Message.conversation_id == conversation_id)
+                                .where(Message.sender_id != user_id)
+                                .where(Message.is_read == False)
+                                .values(is_read=True)
+                            )
+                            result = await session.execute(stmt)
+                            await session.commit()
+                            
+                            # If any rows were updated, notify the other participants
+                            if result.rowcount > 0:
+                                # Get all participants to notify
+                                part_result = await session.execute(
+                                    select(ConversationParticipant)
+                                    .where(ConversationParticipant.conversation_id == conversation_id)
+                                    .where(ConversationParticipant.user_id != user_id)
+                                )
+                                partners = part_result.scalars().all()
+                                for p in partners:
+                                    await manager.send_personal_message({
+                                        "type": "messages_read",
+                                        "payload": {
+                                            "conversation_id": conversation_id,
+                                            "read_by": user_id
+                                        }
+                                    }, p.user_id)
 
                 # WebRTC Signaling routes
                 elif event_type in ["call_offer", "call_answer", "ice_candidate", "end_call", "reject_call"]:

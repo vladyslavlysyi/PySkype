@@ -288,9 +288,20 @@ export const Sidebar = () => {
                           <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">{conv.type === 'GROUP' ? 'Group Chat' : partner?.username}</h4>
                           {isPinned && <span className="text-[10px] text-[#0078d4]">📌</span>}
                         </div>
-                        <span className="text-[10px] text-gray-500"></span>
+                        <span className="text-[10px] text-gray-500">
+                          {conv.last_message?.created_at && new Date(conv.last_message.created_at).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                        </span>
                       </div>
-                      <p className="text-xs text-gray-500 truncate">Select to view messages...</p>
+                      <p className="text-xs text-gray-500 truncate mt-0.5">
+                        {conv.last_message ? (
+                          conv.last_message.content.includes('![') ? '🖼️ Image' :
+                          conv.last_message.content.includes('[🎤 Voice Message]') ? '🎤 Voice message' :
+                          conv.last_message.content.includes('📎') ? '📎 File attachment' :
+                          conv.last_message.content
+                        ) : (
+                          'Select to view messages...'
+                        )}
+                      </p>
                     </div>
                     
                     {/* Context Menu Trigger */}

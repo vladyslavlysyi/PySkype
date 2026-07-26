@@ -55,6 +55,12 @@ async def startup():
     except Exception:
         pass
 
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("ALTER TABLE messages ADD COLUMN is_read BOOLEAN DEFAULT FALSE;"))
+    except Exception:
+        pass
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}

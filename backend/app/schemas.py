@@ -56,6 +56,7 @@ class MessageResponse(MessageBase):
     id: str
     conversation_id: str
     sender_id: str
+    is_read: bool = False
     created_at: datetime
     sender: Optional[UserResponse] = None
 
@@ -79,6 +80,7 @@ class ConversationResponse(BaseModel):
     type: ConversationType
     created_at: datetime
     participants: List[ConversationParticipantResponse]
+    last_message: Optional[dict] = None
 
     class Config:
         from_attributes = True

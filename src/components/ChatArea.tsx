@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useRef } from 'react'
-import { Phone, Video, MoreHorizontal, Send, Smile, Paperclip, UserCircle, ArrowLeft } from 'lucide-react'
+import { Phone, Video, MoreHorizontal, Send, Smile, Paperclip, UserCircle, ArrowLeft, Mic, Check, CheckCheck, Square } from 'lucide-react'
 import { useAppStore, Message } from '@/store/useAppStore'
 import { useWebSocket } from '@/contexts/WebSocketContext'
 import { ProfileModal } from './ProfileModal'
@@ -20,8 +20,11 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [showEmoji, setShowEmoji] = useState(false)
+  const [isRecording, setIsRecording] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null)
+  const audioChunksRef = useRef<Blob[]>([])
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -60,6 +63,66 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
     setText(prev => prev + emojiData.emoji)
   }
 
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true })
+      const recorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = recorder
+      audioChunksRef.current = []
+
+      recorder.ondataavailable = e => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data)
+      }
+
+      recorder.onstop = async () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' })
+        const file = new File([audioBlob], 'voice_message.webm', { type: 'audio/webm' })
+        
+        const formData = new FormData()
+        formData.append("file", file)
+        try {
+          const res = await fetch("/api/upload", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${localStorage.getItem('token')}` },
+            body: formData
+          })
+          if (!res.ok) throw new Error("Upload failed")
+          const data = await res.json()
+          
+          if (activeConversation && isConnected && currentUser) {
+            const receiverIds = activeConversation.participants
+              .filter(p => p.user.id !== currentUser.id)
+              .map(p => p.user.id)
+            const targetUserId = receiverIds.length > 0 ? receiverIds[0] : undefined
+
+            sendMessage('send_message', {
+              conversation_id: activeConversation.id,
+              content: `[🎤 Voice Message](${data.url})`
+            }, targetUserId)
+          }
+        } catch (err) {
+          alert("Failed to upload voice message.")
+        }
+        
+        // Stop tracks
+        stream.getTracks().forEach(track => track.stop())
+      }
+
+      recorder.start()
+      setIsRecording(true)
+    } catch (err) {
+      console.error("Error accessing microphone", err)
+      alert("Could not access microphone.")
+    }
+  }
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop()
+      setIsRecording(false)
+    }
+  }
+
   const renderMessageContent = (content: string) => {
     return content.split('\n').map((line, idx) => {
       const trimmedLine = line.trim()
@@ -73,9 +136,16 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
       }
       const linkMatch = trimmedLine.match(/^\[(.*?)\]\((.*?)\)$/)
       if (linkMatch) {
+        if (linkMatch[1] === '🎤 Voice Message') {
+          return (
+            <div key={idx} className="my-1">
+              <audio controls src={linkMatch[2]} className="max-w-[200px] sm:max-w-[250px] h-10 outline-none" />
+            </div>
+          )
+        }
         return (
-          <a key={idx} href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="underline text-current opacity-90 hover:opacity-100 break-all block my-1">
-            {linkMatch[1]}
+          <a key={idx} href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="underline text-current opacity-90 hover:opacity-100 break-all block my-1 flex items-center gap-1">
+            {linkMatch[1].startsWith('📎') ? null : '🔗'} {linkMatch[1]}
           </a>
         )
       }
@@ -166,11 +236,30 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
     const unsub = subscribe('receive_message', (msg: Message) => {
       if (msg.conversation_id === activeConversation?.id) {
         setMessages(prev => [...prev, msg])
+        // Mark as read immediately if we are viewing this chat
+        if (msg.sender_id !== currentUser?.id) {
+          sendMessage('mark_read', { conversation_id: activeConversation.id })
+        }
       }
     })
 
-    return () => unsub()
-  }, [isConnected, activeConversation, subscribe])
+    const unsubRead = subscribe('messages_read', (data: any) => {
+      if (data.conversation_id === activeConversation?.id) {
+        setMessages(prev => prev.map(m => 
+          m.sender_id !== data.read_by ? { ...m, is_read: true } : m
+        ))
+      }
+    })
+
+    return () => { unsub(); unsubRead() }
+  }, [isConnected, activeConversation, subscribe, currentUser, sendMessage])
+
+  useEffect(() => {
+    // When opening a chat, mark messages as read
+    if (activeConversation && isConnected) {
+      sendMessage('mark_read', { conversation_id: activeConversation.id })
+    }
+  }, [activeConversation, isConnected, sendMessage])
 
   useEffect(() => {
     // Auto scroll to bottom
@@ -292,8 +381,18 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
                 {!isMine && (
                   <UserCircle className="w-8 h-8 text-gray-400 mt-auto flex-shrink-0" />
                 )}
-                <div className={`px-4 py-2.5 rounded-2xl ${isMine ? 'bg-[#0078d4] text-white rounded-br-sm' : 'bg-[#f3f2f1] dark:bg-[#201f1e] text-gray-900 dark:text-gray-100 rounded-bl-sm'}`}>
-                  <div className="text-sm leading-relaxed">{renderMessageContent(msg.content)}</div>
+                <div className={`px-4 py-2.5 rounded-2xl relative ${isMine ? 'bg-[#0078d4] text-white rounded-br-sm' : 'bg-[#f3f2f1] dark:bg-[#201f1e] text-gray-900 dark:text-gray-100 rounded-bl-sm'}`}>
+                  <div className="text-sm leading-relaxed pb-3">{renderMessageContent(msg.content)}</div>
+                  <div className={`absolute bottom-1 right-2 flex items-center gap-1 text-[10px] ${isMine ? 'text-blue-100' : 'text-gray-500'}`}>
+                    <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                    {isMine && (
+                      msg.is_read ? (
+                        <CheckCheck className="w-3.5 h-3.5 text-[#47c6ff]" />
+                      ) : (
+                        <Check className="w-3 h-3 text-blue-200" />
+                      )
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -338,8 +437,15 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
             <Smile className="w-5 h-5" />
           </button>
           <button 
+            onClick={isRecording ? stopRecording : startRecording}
+            className={`p-2 transition rounded-full ${isRecording ? 'text-red-500 bg-red-50 dark:bg-red-900/30 animate-pulse' : 'text-gray-500 hover:text-[#0078d4]'}`}
+          >
+            {isRecording ? <Square className="w-5 h-5 fill-current" /> : <Mic className="w-5 h-5" />}
+          </button>
+          
+          <button 
             onClick={sendMessageToSocket}
-            disabled={!text.trim()} 
+            disabled={!text.trim() && !isRecording} 
             className="p-2 text-[#0078d4] disabled:text-gray-400 disabled:bg-transparent hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-full transition"
           >
             <Send className="w-5 h-5" />

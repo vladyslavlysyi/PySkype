@@ -17,6 +17,7 @@ export interface Message {
   content: string
   sender_id: string
   conversation_id?: string
+  is_read?: boolean
   created_at: string
   sender?: User
 }
@@ -26,6 +27,12 @@ export interface Conversation {
   type: 'DIRECT' | 'GROUP'
   participants: { user: User, is_pinned: boolean }[]
   messages?: Message[]
+  last_message?: {
+    content: string
+    created_at: string
+    is_read: boolean
+    sender_id: string
+  }
 }
 
 interface AppState {
