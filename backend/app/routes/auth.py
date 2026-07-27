@@ -6,7 +6,7 @@ from ..database import get_db
 from ..models import User
 from ..schemas import UserCreate, AuthResponse
 from ..auth import get_password_hash, verify_password, create_access_token, ACCESS_TOKEN_EXPIRE_MINUTES
-from ..main import limiter
+from ..limiter import limiter
 
 router = APIRouter(prefix="/api/auth", tags=["auth"])
 
