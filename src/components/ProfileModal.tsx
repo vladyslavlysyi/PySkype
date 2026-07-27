@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react'
 import { UserCircle, X, Mail, Info, Circle, Edit2, Check, Lock, User as UserIcon, Image as ImageIcon, MessageSquare, Phone, Video, Calendar, Image as LucideImage, File, Link as LinkIcon, Mic, ZoomIn, ZoomOut } from 'lucide-react'
 import { User, useAppStore } from '@/store/useAppStore'
 import { VoiceMessagePlayer } from './VoiceMessagePlayer'
+import { VideoMessagePlayer } from './VideoMessagePlayer'
 import Cropper from 'react-easy-crop'
 import getCroppedImg from '@/utils/cropImage'
 import { predefinedBackgrounds } from '@/utils/backgrounds'
@@ -472,12 +473,9 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
                 {activeTab === 'video' && (
                   <div className="space-y-4">
                     {videoMessageList.length > 0 ? (
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="flex flex-wrap gap-4 justify-center">
                         {videoMessageList.map((v, i) => (
-                          <div key={i} className="aspect-square rounded-full overflow-hidden border-2 border-[#0078d4]/30 bg-black group relative cursor-pointer hover:border-[#0078d4] transition-colors">
-                            <video src={v.url} className="w-full h-full object-cover" autoPlay loop muted playsInline />
-                            <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
-                          </div>
+                          <VideoMessagePlayer key={i} src={v.url} />
                         ))}
                       </div>
                     ) : (

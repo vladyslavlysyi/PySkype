@@ -56,6 +56,12 @@ async def startup():
             await conn.execute(text("ALTER TABLE users ADD COLUMN theme_color VARCHAR;"))
     except Exception:
         pass
+        
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("ALTER TABLE messages ADD COLUMN deleted_by VARCHAR DEFAULT '';"))
+    except Exception:
+        pass
 
     try:
         async with engine.begin() as conn:

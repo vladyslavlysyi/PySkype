@@ -51,6 +51,8 @@ interface AppState {
   
   searchResults: User[]
   setSearchResults: (users: User[]) => void
+
+  deleteMessage: (messageId: string) => void
 }
 
 import { persist } from 'zustand/middleware'
@@ -72,6 +74,18 @@ export const useAppStore = create<AppState>()(
 
       searchResults: [],
       setSearchResults: (searchResults) => set({ searchResults }),
+
+      deleteMessage: (messageId) => set((state) => {
+        // Remove from active conversation if it matches
+        let updatedActive = state.activeConversation
+        if (updatedActive && updatedActive.messages) {
+          updatedActive = {
+            ...updatedActive,
+            messages: updatedActive.messages.filter(m => m.id !== messageId)
+          }
+        }
+        return { activeConversation: updatedActive }
+      }),
     }),
     {
       name: 'skype-storage',

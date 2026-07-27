@@ -7,6 +7,7 @@ import { useWebSocket } from '@/contexts/WebSocketContext'
 import { ProfileModal } from './ProfileModal'
 import EmojiPicker from 'emoji-picker-react'
 import { VoiceMessagePlayer } from './VoiceMessagePlayer'
+import { VideoMessagePlayer } from './VideoMessagePlayer'
 import { predefinedBackgrounds } from '@/utils/backgrounds'
 
 interface ChatAreaProps {
@@ -223,9 +224,7 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
         } else if (linkMatch[1] === '⭕ Video Message' || linkMatch[1] === '🎥 Video Message') {
           return (
             <div key={idx} className="my-1">
-              <div className="w-48 h-48 sm:w-56 sm:h-56 rounded-full overflow-hidden border-4 border-transparent hover:border-[#0078d4]/50 transition-colors shadow-md bg-black">
-                <video src={linkMatch[2]} className="w-full h-full object-cover" autoPlay loop muted playsInline />
-              </div>
+              <VideoMessagePlayer src={linkMatch[2]} />
             </div>
           )
         }
@@ -366,8 +365,23 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
       }
     })
 
-    return () => { unsub(); unsubRead() }
+    const unsubDelete = subscribe('message_deleted', (data: any) => {
+      if (data.conversation_id === activeConversation?.id) {
+        setMessages(prev => prev.filter(m => m.id !== data.message_id))
+      }
+    })
+
+    return () => { unsub(); unsubRead(); unsubDelete() }
   }, [isConnected, activeConversation, subscribe, currentUser, sendMessage])
+
+  const [activeMenuId, setActiveMenuId] = useState<string | null>(null)
+
+  const handleDeleteMessage = (msgId: string, forEveryone: boolean) => {
+    sendMessage('delete_message', { message_id: msgId, for_everyone: forEveryone })
+    // Optimistically remove from local state
+    setMessages(prev => prev.filter(m => m.id !== msgId))
+    setActiveMenuId(null)
+  }
 
   useEffect(() => {
     // When opening a chat, mark messages as read
@@ -579,7 +593,7 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
           const isMine = msg.sender_id === currentUser?.id
           return (
             <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
-              <div className={`max-w-[70%] flex gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'}`}>
+              <div className={`max-w-[70%] flex gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'} group`}>
                 {!isMine && (
                   <UserCircle className="w-8 h-8 text-gray-400 mt-auto flex-shrink-0" />
                 )}
@@ -595,6 +609,35 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
                       )
                     )}
                   </div>
+                </div>
+
+                {/* Message Actions Menu */}
+                <div className="relative opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
+                  <button 
+                    onClick={() => setActiveMenuId(activeMenuId === msg.id ? null : msg.id)}
+                    className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-full hover:bg-black/5 dark:hover:bg-white/5"
+                  >
+                    <MoreHorizontal className="w-5 h-5" />
+                  </button>
+                  
+                  {activeMenuId === msg.id && (
+                    <div className="absolute top-full right-0 mt-1 w-48 bg-white dark:bg-[#2d2c2c] rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-1 z-50">
+                      <button 
+                        onClick={() => handleDeleteMessage(msg.id, false)}
+                        className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-white/5 transition"
+                      >
+                        Delete for me
+                      </button>
+                      {isMine && (
+                        <button 
+                          onClick={() => handleDeleteMessage(msg.id, true)}
+                          className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-white/5 transition"
+                        >
+                          Delete for everyone
+                        </button>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

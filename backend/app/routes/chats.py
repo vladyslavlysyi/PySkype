@@ -76,8 +76,10 @@ async def get_messages(conversation_id: str, db: AsyncSession = Depends(get_db),
         .options(selectinload(Message.sender))
     )
     messages = result.scalars().all()
+    # Filter out messages deleted by this user
+    filtered_messages = [m for m in messages if m.deleted_by is None or f",{current_user.id}," not in m.deleted_by]
     # Reverse to get chronological order for UI
-    return messages[::-1]
+    return filtered_messages[::-1]
 
 @router.post("/{conversation_id}/pin")
 async def toggle_pin_chat(conversation_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
