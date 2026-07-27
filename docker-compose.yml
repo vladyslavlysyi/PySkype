@@ -33,7 +33,7 @@ services:
     container_name: skype_backend
     environment:
       - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://postgres:postgrespassword@db:5432/skype_clone}
-      - JWT_SECRET=${JWT_SECRET}
+      - JWT_SECRET=${JWT_SECRET:-default-secure-secret-please-change-in-prod}
       - REDIS_URL=redis://redis:6379/0
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost,https://164-90-221-45.nip.io}
     volumes:
