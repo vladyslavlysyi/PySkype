@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react'
-import { UserCircle, X, Mail, Info, Circle, Edit2, Check, Lock, User as UserIcon, Image as ImageIcon, MessageSquare, Phone, Video, Calendar, Image as LucideImage, File, Link as LinkIcon } from 'lucide-react'
+import { UserCircle, X, Mail, Info, Circle, Edit2, Check, Lock, User as UserIcon, Image as ImageIcon, MessageSquare, Phone, Video, Calendar, Image as LucideImage, File, Link as LinkIcon, Mic } from 'lucide-react'
 import { User, useAppStore } from '@/store/useAppStore'
+import { VoiceMessagePlayer } from './VoiceMessagePlayer'
 
 interface ProfileModalProps {
   user: User
@@ -18,7 +19,7 @@ interface Message {
 export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onStartCall }: ProfileModalProps) => {
   const { setCurrentUser } = useAppStore()
   const [isEditing, setIsEditing] = useState(false)
-  const [activeTab, setActiveTab] = useState<'info' | 'media' | 'files' | 'links'>('info')
+  const [activeTab, setActiveTab] = useState<'info' | 'media' | 'files' | 'links' | 'voice'>('info')
   const [messages, setMessages] = useState<Message[]>([])
   
   const [formData, setFormData] = useState({
@@ -131,6 +132,7 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
   const mediaList: { url: string, name: string }[] = []
   const fileList: { url: string, name: string }[] = []
   const linkList: { url: string, name: string }[] = []
+  const voiceList: { url: string, date?: string }[] = []
 
   messages.forEach(msg => {
     const lines = msg.content.split('\n')
@@ -143,7 +145,9 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
       }
       const linkMatch = trimmedLine.match(/^\[(.*?)\]\((.*?)\)$/)
       if (linkMatch) {
-        if (linkMatch[1].startsWith('📎 ')) {
+        if (linkMatch[1] === '🎤 Voice Message') {
+          voiceList.push({ url: linkMatch[2] })
+        } else if (linkMatch[1].startsWith('📎 ')) {
           fileList.push({ name: linkMatch[1].replace('📎 ', ''), url: linkMatch[2] })
         } else {
           linkList.push({ name: linkMatch[1], url: linkMatch[2] })
@@ -286,6 +290,12 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
                     >
                       Links {linkList.length > 0 && <span className="bg-gray-100 dark:bg-gray-800 text-xs px-1.5 py-0.5 rounded-md text-gray-500">{linkList.length}</span>}
                     </button>
+                    <button 
+                      onClick={() => setActiveTab('voice')}
+                      className={`flex-1 py-3 text-sm font-semibold transition-colors border-b-2 flex items-center justify-center gap-1 ${activeTab === 'voice' ? 'border-[#0078d4] text-[#0078d4]' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                    >
+                      Voice {voiceList.length > 0 && <span className="bg-gray-100 dark:bg-gray-800 text-xs px-1.5 py-0.5 rounded-md text-gray-500">{voiceList.length}</span>}
+                    </button>
                   </>
                 )}
               </div>
@@ -388,6 +398,23 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
                       <div className="flex flex-col items-center justify-center text-gray-500 py-10">
                         <LinkIcon className="w-12 h-12 mb-3 opacity-20" />
                         <p className="text-sm">No links shared yet</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'voice' && (
+                  <div className="space-y-4">
+                    {voiceList.length > 0 ? (
+                      voiceList.map((v, i) => (
+                        <div key={i} className="flex items-center gap-3 p-3 rounded-xl bg-[#0078d4] shadow-sm">
+                          <VoiceMessagePlayer src={v.url} />
+                        </div>
+                      ))
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-gray-500 py-10">
+                        <Mic className="w-12 h-12 mb-3 opacity-20" />
+                        <p className="text-sm">No voice messages yet</p>
                       </div>
                     )}
                   </div>
