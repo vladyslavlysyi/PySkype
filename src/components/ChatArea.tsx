@@ -1,13 +1,14 @@
 'use client'
 
 import React, { useEffect, useState, useRef } from 'react'
-import { Phone, Video as VideoIcon, MoreHorizontal, Send, Smile, Paperclip, UserCircle, ArrowLeft, Mic, Check, CheckCheck, Square, Camera } from 'lucide-react'
+import { Phone, Video as VideoIcon, MoreHorizontal, Send, Smile, Paperclip, UserCircle, ArrowLeft, Mic, Check, CheckCheck, Square, Camera, Trash2 } from 'lucide-react'
 import { useAppStore, Message } from '@/store/useAppStore'
 import { useWebSocket } from '@/contexts/WebSocketContext'
 import { ProfileModal } from './ProfileModal'
 import EmojiPicker from 'emoji-picker-react'
 import { VoiceMessagePlayer } from './VoiceMessagePlayer'
 import { VideoMessagePlayer } from './VideoMessagePlayer'
+import { DeleteMessageModal } from './DeleteMessageModal'
 import { predefinedBackgrounds } from '@/utils/backgrounds'
 
 interface ChatAreaProps {
@@ -365,9 +366,15 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
       }
     })
 
-    const unsubDelete = subscribe('message_deleted', (data: any) => {
+    const unsubDelete = subscribe('messages_deleted', (data: any) => {
       if (data.conversation_id === activeConversation?.id) {
-        setMessages(prev => prev.filter(m => m.id !== data.message_id))
+        setMessages(prev => prev.filter(m => !data.message_ids.includes(m.id)))
+        // if currently selecting, remove deleted from selection
+        setSelectedMessageIds(prev => {
+          const newSet = new Set(prev)
+          data.message_ids.forEach((id: string) => newSet.delete(id))
+          return newSet
+        })
       }
     })
 
@@ -375,12 +382,38 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
   }, [isConnected, activeConversation, subscribe, currentUser, sendMessage])
 
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null)
+  
+  // Selection mode state
+  const [isSelectionMode, setIsSelectionMode] = useState(false)
+  const [selectedMessageIds, setSelectedMessageIds] = useState<Set<string>>(new Set())
+  const [showDeleteModal, setShowDeleteModal] = useState(false)
 
-  const handleDeleteMessage = (msgId: string, forEveryone: boolean) => {
-    sendMessage('delete_message', { message_id: msgId, for_everyone: forEveryone })
-    // Optimistically remove from local state
-    setMessages(prev => prev.filter(m => m.id !== msgId))
-    setActiveMenuId(null)
+  const toggleSelection = (msgId: string) => {
+    setSelectedMessageIds(prev => {
+      const newSet = new Set(prev)
+      if (newSet.has(msgId)) {
+        newSet.delete(msgId)
+        if (newSet.size === 0) setIsSelectionMode(false)
+      } else {
+        newSet.add(msgId)
+      }
+      return newSet
+    })
+  }
+
+  const handleDeleteSelected = (forEveryone: boolean) => {
+    if (selectedMessageIds.size === 0) return
+    sendMessage('delete_messages', { 
+      message_ids: Array.from(selectedMessageIds), 
+      for_everyone: forEveryone,
+      conversation_id: activeConversation?.id 
+    })
+    
+    // Optimistic UI update
+    setMessages(prev => prev.filter(m => !selectedMessageIds.has(m.id)))
+    setSelectedMessageIds(new Set())
+    setIsSelectionMode(false)
+    setShowDeleteModal(false)
   }
 
   useEffect(() => {
@@ -591,8 +624,22 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
       >
         {messages.map(msg => {
           const isMine = msg.sender_id === currentUser?.id
+          const isSelected = selectedMessageIds.has(msg.id)
+          
           return (
-            <div key={msg.id} className={`flex ${isMine ? 'justify-end' : 'justify-start'}`}>
+            <div 
+              key={msg.id} 
+              className={`flex items-center gap-3 w-full ${isMine ? 'justify-end' : 'justify-start'} ${isSelectionMode ? 'cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 p-2 rounded-xl transition-colors' : ''}`}
+              onClick={() => {
+                if (isSelectionMode) toggleSelection(msg.id)
+              }}
+            >
+              {isSelectionMode && (
+                <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors ${isSelected ? 'bg-[#0078d4] border-[#0078d4]' : 'border-gray-400 dark:border-gray-600'}`}>
+                  {isSelected && <Check className="w-3 h-3 text-white" />}
+                </div>
+              )}
+              
               <div className={`max-w-[70%] flex gap-2 ${isMine ? 'flex-row-reverse' : 'flex-row'} group`}>
                 {!isMine && (
                   <UserCircle className="w-8 h-8 text-gray-400 mt-auto flex-shrink-0" />
@@ -612,42 +659,69 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
                 </div>
 
                 {/* Message Actions Menu */}
-                <div className="relative opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
-                  <button 
-                    onClick={() => setActiveMenuId(activeMenuId === msg.id ? null : msg.id)}
-                    className="p-1.5 text-gray-700 dark:text-gray-200 bg-white/80 dark:bg-black/60 hover:bg-white dark:hover:bg-black backdrop-blur-sm shadow-sm rounded-full border border-gray-200/50 dark:border-gray-700/50"
-                  >
-                    <MoreHorizontal className="w-5 h-5" />
-                  </button>
-                  
-                  {activeMenuId === msg.id && (
-                    <div className="absolute bottom-full mb-2 right-0 w-48 bg-white dark:bg-[#2d2c2c] rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.1)] dark:shadow-[0_0_15px_rgba(0,0,0,0.3)] border border-gray-200 dark:border-gray-700 py-1 z-[100]">
-                      <button 
-                        onClick={() => handleDeleteMessage(msg.id, false)}
-                        className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-white/5 transition"
-                      >
-                        Delete for me
-                      </button>
-                      {isMine && (
+                {!isSelectionMode && (
+                  <div className="relative opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
+                    <button 
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setActiveMenuId(activeMenuId === msg.id ? null : msg.id)
+                      }}
+                      className="p-1.5 text-gray-700 dark:text-gray-200 bg-white/80 dark:bg-black/60 hover:bg-white dark:hover:bg-black backdrop-blur-sm shadow-sm rounded-full border border-gray-200/50 dark:border-gray-700/50"
+                    >
+                      <MoreHorizontal className="w-5 h-5" />
+                    </button>
+                    
+                    {activeMenuId === msg.id && (
+                      <div className="absolute bottom-full mb-2 right-0 w-48 bg-white dark:bg-[#2d2c2c] rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.1)] dark:shadow-[0_0_15px_rgba(0,0,0,0.3)] border border-gray-200 dark:border-gray-700 py-1 z-[100]">
                         <button 
-                          onClick={() => handleDeleteMessage(msg.id, true)}
-                          className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-white/5 transition"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setIsSelectionMode(true);
+                            setSelectedMessageIds(new Set([msg.id]));
+                            setActiveMenuId(null);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5 transition"
                         >
-                          Delete for everyone
+                          Select
                         </button>
-                      )}
-                    </div>
-                  )}
-                </div>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           )
         })}
       </div>
 
-      {/* Input */}
+      {/* Selection Toolbar / Input */}
       <div className="p-4 bg-white dark:bg-[#11100f] border-t border-gray-200 dark:border-gray-800 relative">
-        {showEmoji && (
+        {isSelectionMode ? (
+          <div className="flex items-center justify-between p-2">
+            <button 
+              onClick={() => {
+                setIsSelectionMode(false)
+                setSelectedMessageIds(new Set())
+              }}
+              className="px-4 py-2 text-sm font-medium text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-white/5 rounded-xl transition"
+            >
+              Cancel
+            </button>
+            
+            <div className="text-sm font-semibold text-gray-900 dark:text-white">
+              {selectedMessageIds.size} Selected
+            </div>
+
+            <button 
+              onClick={() => setShowDeleteModal(true)}
+              className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-full transition"
+            >
+              <Trash2 className="w-5 h-5" />
+            </button>
+          </div>
+        ) : (
+          <>
+            {showEmoji && (
           <div className="absolute bottom-20 right-4 z-50 shadow-2xl rounded-lg overflow-hidden">
             <div className="fixed inset-0" onClick={() => setShowEmoji(false)}></div>
             <div className="relative z-50">
@@ -716,6 +790,8 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
             <Send className="w-5 h-5" />
           </button>
         </div>
+        </>
+        )}
       </div>
 
       {isProfileOpen && partner && (
@@ -724,6 +800,15 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
           onClose={() => setIsProfileOpen(false)} 
           conversationId={activeConversation.id}
           onStartCall={onStartCall}
+        />
+      )}
+
+      {showDeleteModal && (
+        <DeleteMessageModal
+          count={selectedMessageIds.size}
+          hasOwnMessages={Array.from(selectedMessageIds).some(id => messages.find(m => m.id === id)?.sender_id === currentUser?.id)}
+          onClose={() => setShowDeleteModal(false)}
+          onConfirm={handleDeleteSelected}
         />
       )}
     </div>

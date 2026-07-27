@@ -173,59 +173,73 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                                         }
                                     }, p.user_id)
 
-                elif event_type == "delete_message":
-                    message_id = payload.get("message_id")
+                elif event_type == "delete_messages":
+                    message_ids = payload.get("message_ids", [])
                     for_everyone = payload.get("for_everyone", False)
-                    if message_id:
+                    conversation_id = payload.get("conversation_id")
+                    
+                    if message_ids and conversation_id:
                         async with AsyncSessionLocal() as session:
-                            msg_result = await session.execute(select(Message).where(Message.id == message_id))
-                            msg = msg_result.scalars().first()
-                            
-                            if msg:
-                                conversation_id = msg.conversation_id
-                                # Verify participant
-                                part_result = await session.execute(
-                                    select(ConversationParticipant)
-                                    .where(ConversationParticipant.conversation_id == conversation_id)
-                                    .where(ConversationParticipant.user_id == user_id)
-                                )
-                                if not part_result.scalars().first():
-                                    continue
+                            # Verify participant
+                            part_result = await session.execute(
+                                select(ConversationParticipant)
+                                .where(ConversationParticipant.conversation_id == conversation_id)
+                                .where(ConversationParticipant.user_id == user_id)
+                            )
+                            if not part_result.scalars().first():
+                                continue
                                 
+                            # Fetch all messages
+                            from sqlalchemy import update, delete
+                            msg_result = await session.execute(
+                                select(Message)
+                                .where(Message.id.in_(message_ids))
+                                .where(Message.conversation_id == conversation_id)
+                            )
+                            msgs = msg_result.scalars().all()
+                            
+                            deleted_ids = []
+                            for msg in msgs:
                                 if for_everyone and msg.sender_id == user_id:
-                                    # Hard delete
+                                    # Hard delete for own messages
                                     await session.delete(msg)
-                                    await session.commit()
-                                    
-                                    # Notify everyone
-                                    part_result = await session.execute(
-                                        select(ConversationParticipant)
-                                        .where(ConversationParticipant.conversation_id == conversation_id)
-                                    )
-                                    partners = part_result.scalars().all()
-                                    for p in partners:
-                                        await manager.send_personal_message({
-                                            "type": "message_deleted",
-                                            "payload": {
-                                                "message_id": message_id,
-                                                "conversation_id": conversation_id
-                                            }
-                                        }, p.user_id)
-                                        
+                                    deleted_ids.append(msg.id)
                                 elif not for_everyone:
                                     # Delete for me only
                                     deleted_by = msg.deleted_by or ""
                                     if f",{user_id}," not in deleted_by:
                                         msg.deleted_by = f"{deleted_by},{user_id}," if deleted_by else f",{user_id},"
-                                        await session.commit()
-                                        
+                                    deleted_ids.append(msg.id)
+                                    
+                            await session.commit()
+                            
+                            if not deleted_ids:
+                                continue
+                                
+                            if for_everyone:
+                                # Notify everyone about deleted_ids
+                                part_result = await session.execute(
+                                    select(ConversationParticipant)
+                                    .where(ConversationParticipant.conversation_id == conversation_id)
+                                )
+                                partners = part_result.scalars().all()
+                                for p in partners:
                                     await manager.send_personal_message({
-                                        "type": "message_deleted",
+                                        "type": "messages_deleted",
                                         "payload": {
-                                            "message_id": message_id,
+                                            "message_ids": deleted_ids,
                                             "conversation_id": conversation_id
                                         }
-                                    }, user_id)
+                                    }, p.user_id)
+                            else:
+                                # Notify only me
+                                await manager.send_personal_message({
+                                    "type": "messages_deleted",
+                                    "payload": {
+                                        "message_ids": deleted_ids,
+                                        "conversation_id": conversation_id
+                                    }
+                                }, user_id)
 
                 # WebRTC Signaling routes
                 elif event_type in ["call_offer", "call_answer", "ice_candidate", "end_call", "reject_call"]:
