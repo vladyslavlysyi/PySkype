@@ -58,7 +58,8 @@ export default function LoginPage() {
       })
       
       // Save token for future API calls
-      localStorage.setItem('token', data.token)
+      // token is handled via HttpOnly cookie
+
 
       router.push('/')
     } catch (err: any) {

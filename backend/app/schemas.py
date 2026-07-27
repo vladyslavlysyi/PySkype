@@ -110,4 +110,3 @@ class TokenData(BaseModel):
 
 class AuthResponse(BaseModel):
     user: UserResponse
-    token: str

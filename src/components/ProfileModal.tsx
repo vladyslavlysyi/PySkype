@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { UserCircle, X, Mail, Info, Circle, Edit2, Check, Lock, User as UserIcon, Image as ImageIcon, MessageSquare, Phone, Video, Calendar, Image as LucideImage, File, Link as LinkIcon, Mic, ZoomIn, ZoomOut } from 'lucide-react'
+import { getAuthHeaders } from '@/lib/csrf'
 import { User, useAppStore } from '@/store/useAppStore'
 import { VoiceMessagePlayer } from './VoiceMessagePlayer'
 import { VideoMessagePlayer } from './VideoMessagePlayer'
@@ -72,7 +73,7 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
       
       const res = await fetch("/api/upload", {
         method: "POST",
-        headers: { "Authorization": `Bearer ${localStorage.getItem('token')}` },
+        headers: getAuthHeaders(),
         body: fd
       })
       if (res.ok) {
@@ -94,9 +95,7 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
 
   useEffect(() => {
     if (conversationId) {
-      fetch(`/api/chats/${conversationId}/messages`, {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
-      })
+      fetch(`/api/chats/${conversationId}/messages`)
       .then(res => res.json())
       .then(data => {
         if (Array.isArray(data)) setMessages(data)
@@ -143,8 +142,8 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
       const res = await fetch('/api/users/me', {
         method: 'PUT',
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
         },
         body: JSON.stringify(payload)
       })
@@ -599,7 +598,7 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
                             fd.append("file", file)
                             const res = await fetch("/api/upload", {
                               method: "POST",
-                              headers: { "Authorization": `Bearer ${localStorage.getItem('token')}` },
+                              headers: getAuthHeaders(),
                               body: fd
                             })
                             if (res.ok) {

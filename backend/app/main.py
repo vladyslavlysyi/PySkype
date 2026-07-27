@@ -27,6 +27,20 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+from fastapi import HTTPException
+
+@app.middleware("http")
+async def csrf_middleware(request: Request, call_next):
+    if request.method in ["POST", "PUT", "DELETE", "PATCH"]:
+        if not request.url.path.startswith("/api/auth/"):
+            csrf_cookie = request.cookies.get("csrf_token")
+            csrf_header = request.headers.get("x-csrf-token")
+            if not csrf_cookie or not csrf_header or csrf_cookie != csrf_header:
+                from fastapi.responses import JSONResponse
+                return JSONResponse(status_code=403, content={"detail": "CSRF token missing or invalid"})
+    response = await call_next(request)
+    return response
+
 @app.middleware("http")
 async def security_headers(request: Request, call_next):
     response = await call_next(request)

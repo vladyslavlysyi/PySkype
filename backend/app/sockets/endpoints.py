@@ -51,8 +51,10 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
         "payload": {"user_id": user_id, "status": "ONLINE"}
     })
 
-    import time
-    message_timestamps = []
+    import os
+    import redis.asyncio as aioredis
+    redis_url = os.getenv("REDIS_URL", "redis://localhost:6379/0")
+    redis_client = aioredis.from_url(redis_url)
 
     try:
         while True:
@@ -61,13 +63,19 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                 await websocket.close(code=1009)
                 break
                 
-            # Rate limiting: max 5 messages per second
-            current_time = time.time()
-            message_timestamps = [ts for ts in message_timestamps if current_time - ts < 1.0]
-            if len(message_timestamps) >= 5:
-                await websocket.send_json({"type": "error", "payload": "Rate limit exceeded"})
-                continue
-            message_timestamps.append(current_time)
+            # Rate limiting: max 5 messages per second via Redis
+            rl_key = f"ratelimit:ws:{user_id}"
+            try:
+                current = await redis_client.incr(rl_key)
+                if current == 1:
+                    await redis_client.expire(rl_key, 1)
+                if current > 5:
+                    await websocket.send_json({"type": "error", "payload": "Rate limit exceeded"})
+                    continue
+            except Exception as e:
+                print(f"Redis error: {e}")
+                # Fail open if Redis is down
+                pass
 
             print(f"WS Received: {data}", flush=True)
             try:

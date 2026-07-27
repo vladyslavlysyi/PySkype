@@ -37,7 +37,17 @@ async def register(request: Request, user: UserCreate, response: Response, db: A
         samesite="lax",
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
     )
-    return {"user": new_user, "token": access_token}
+    import secrets
+    csrf_token = secrets.token_urlsafe(32)
+    response.set_cookie(
+        key="csrf_token",
+        value=csrf_token,
+        httponly=False,  # Frontend needs to read this!
+        secure=True,
+        samesite="lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    )
+    return {"user": new_user}
 
 @router.post("/login", response_model=AuthResponse)
 @limiter.limit("5/minute")
@@ -59,4 +69,14 @@ async def login(request: Request, response: Response, form_data: OAuth2PasswordR
         samesite="lax",
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
     )
-    return {"user": user, "token": access_token}
+    import secrets
+    csrf_token = secrets.token_urlsafe(32)
+    response.set_cookie(
+        key="csrf_token",
+        value=csrf_token,
+        httponly=False,  # Frontend needs to read this!
+        secure=True,
+        samesite="lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60
+    )
+    return {"user": user}

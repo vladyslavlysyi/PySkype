@@ -26,12 +26,11 @@ export const WebSocketProvider = ({ children }: { children: ReactNode }) => {
   const currentUser = useAppStore(state => state.currentUser)
 
   useEffect(() => {
-    const token = localStorage.getItem('token')
-    if (!token || !currentUser) return
+    if (!currentUser) return
 
     // Use the environment variable, fallback to localhost for development
     const wsUrl = process.env.NEXT_PUBLIC_WS_URL || 'ws://localhost:8000/api/ws'
-    const ws = new WebSocket(`${wsUrl}?token=${token}`)
+    const ws = new WebSocket(wsUrl)
 
     ws.onopen = () => setIsConnected(true)
     ws.onclose = () => setIsConnected(false)

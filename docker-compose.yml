@@ -17,6 +17,15 @@ services:
       timeout: 5s
       retries: 5
 
+  # Redis for WebSockets
+  redis:
+    image: redis:7-alpine
+    container_name: skype_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+
   # FastAPI Backend
   backend:
     build: 
@@ -24,13 +33,16 @@ services:
     container_name: skype_backend
     environment:
       - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://postgres:postgrespassword@db:5432/skype_clone}
-      - JWT_SECRET=${JWT_SECRET:-super-secret-key-12345}
+      - JWT_SECRET=${JWT_SECRET}
+      - REDIS_URL=redis://redis:6379/0
       - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost,https://164-90-221-45.nip.io}
     volumes:
       - uploads_data:/app/uploads
     depends_on:
       db:
         condition: service_healthy
+      redis:
+        condition: service_started
 
   # Next.js Frontend
   frontend:
@@ -64,6 +76,7 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
   caddy_data:
   caddy_config:
   uploads_data:

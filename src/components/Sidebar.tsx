@@ -2,6 +2,7 @@
 
 import React, { useEffect, useState } from 'react'
 import { Search, UserCircle, MessageSquare, Phone, MoreVertical, CheckCircle2, Clock, XCircle, Moon } from 'lucide-react'
+import { getAuthHeaders } from '@/lib/csrf'
 import { useAppStore, User } from '@/store/useAppStore'
 import { ProfileModal } from './ProfileModal'
 import { useWebSocket } from '@/contexts/WebSocketContext'
@@ -15,7 +16,7 @@ export const Sidebar = () => {
   const fetchConversations = async () => {
     try {
       const res = await fetch('/api/users/conversations', {
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: getAuthHeaders()
       })
       const data = await res.json()
       if (Array.isArray(data)) {
@@ -58,9 +59,7 @@ export const Sidebar = () => {
       setIsSearching(true)
       try {
         const res = await fetch(`/api/users/search?q=${searchQuery}`, {
-          headers: {
-            'Authorization': `Bearer ${localStorage.getItem('token')}`
-          }
+          headers: getAuthHeaders()
         })
         const data = await res.json()
         setSearchResults(Array.isArray(data) ? data : [])
@@ -82,7 +81,7 @@ export const Sidebar = () => {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` // Placeholder
+          ...getAuthHeaders()
         },
         body: JSON.stringify({ targetUserId: targetUser.id })
       })
@@ -91,7 +90,7 @@ export const Sidebar = () => {
         setActiveConversation(data.conversation)
         // Refresh conversations to include the new one
         const convRes = await fetch('/api/users/conversations', {
-          headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+          headers: getAuthHeaders()
         })
         const convData = await convRes.json()
         if (Array.isArray(convData)) setConversations(convData)
@@ -107,7 +106,7 @@ export const Sidebar = () => {
     try {
       const res = await fetch(`/api/chats/${convId}/pin`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: getAuthHeaders()
       })
       const data = await res.json()
       if (data.status === 'success') {
@@ -132,7 +131,7 @@ export const Sidebar = () => {
     try {
       const res = await fetch(`/api/chats/${convId}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: getAuthHeaders()
       })
       if (res.ok) {
         setConversations(conversations.filter(c => c.id !== convId))
@@ -195,7 +194,6 @@ export const Sidebar = () => {
             <div className="absolute right-0 top-10 z-50 w-48 bg-white dark:bg-[#201f1e] rounded-md shadow-lg border border-gray-200 dark:border-gray-700 py-1">
               <button 
                 onClick={() => {
-                  localStorage.removeItem('token')
                   useAppStore.getState().setCurrentUser(null)
                   window.location.href = '/login'
                 }}

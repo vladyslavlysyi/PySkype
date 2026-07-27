@@ -4,6 +4,7 @@ import React, { useEffect, useState, useRef } from 'react'
 import { Phone, Video as VideoIcon, MoreHorizontal, Send, Smile, Paperclip, UserCircle, ArrowLeft, Mic, Check, CheckCheck, Square, Camera, Trash2 } from 'lucide-react'
 import { useAppStore, Message } from '@/store/useAppStore'
 import { useWebSocket } from '@/contexts/WebSocketContext'
+import { getAuthHeaders } from '@/lib/csrf'
 import { ProfileModal } from './ProfileModal'
 import EmojiPicker from 'emoji-picker-react'
 import { VoiceMessagePlayer } from './VoiceMessagePlayer'
@@ -50,7 +51,7 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
     try {
       const res = await fetch("/api/upload", {
         method: "POST",
-        headers: { "Authorization": `Bearer ${localStorage.getItem('token')}` },
+        headers: getAuthHeaders(),
         body: formData
       })
       if (!res.ok) throw new Error("Upload failed")
@@ -92,7 +93,7 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
         try {
           const res = await fetch("/api/upload", {
             method: "POST",
-            headers: { "Authorization": `Bearer ${localStorage.getItem('token')}` },
+            headers: getAuthHeaders(),
             body: formData
           })
           if (!res.ok) throw new Error("Upload failed")
@@ -150,7 +151,7 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
         try {
           const res = await fetch("/api/upload", {
             method: "POST",
-            headers: { "Authorization": `Bearer ${localStorage.getItem('token')}` },
+            headers: getAuthHeaders(),
             body: formData
           })
           if (!res.ok) {
@@ -269,7 +270,7 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
     try {
       const res = await fetch(`/api/chats/${activeConversation.id}/pin`, {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: getAuthHeaders()
       })
       const data = await res.json()
       if (data.status === 'success') {
@@ -294,7 +295,7 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
     try {
       const res = await fetch(`/api/chats/${activeConversation.id}`, {
         method: 'DELETE',
-        headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+        headers: getAuthHeaders()
       })
       if (res.ok) {
         setConversations(conversations.filter(c => c.id !== activeConversation.id))
@@ -315,7 +316,7 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
         method: 'PUT',
         headers: { 
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}` 
+          ...getAuthHeaders()
         },
         body: JSON.stringify({ chat_bg: bgUrl })
       })
@@ -341,7 +342,7 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
 
     // Fetch messages
     fetch(`/api/chats/${activeConversation.id}/messages`, {
-      headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
+      headers: getAuthHeaders()
     })
       .then(res => res.json())
       .then(data => {
@@ -599,7 +600,7 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
                     fd.append("file", file)
                     const res = await fetch("/api/upload", {
                       method: "POST",
-                      headers: { "Authorization": `Bearer ${localStorage.getItem('token')}` },
+                      headers: getAuthHeaders(),
                       body: fd
                     })
                     if (res.ok) {

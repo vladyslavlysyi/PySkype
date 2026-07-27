@@ -15,23 +15,16 @@ export const AuthGuard = ({ children }: { children: React.ReactNode }) => {
     setIsMounted(true)
 
     const verifyUser = async () => {
-      const token = localStorage.getItem('token')
-      if (token) {
-        try {
-          const res = await fetch('/api/users/me', {
-            headers: { 'Authorization': `Bearer ${token}` }
-          })
-          if (res.ok) {
-            const data = await res.json()
-            setCurrentUser(data)
-          } else {
-            localStorage.removeItem('token')
-            setCurrentUser(null)
-          }
-        } catch (err) {
-          console.error('Failed to fetch user:', err)
+      try {
+        const res = await fetch('/api/users/me')
+        if (res.ok) {
+          const data = await res.json()
+          setCurrentUser(data)
+        } else {
+          setCurrentUser(null)
         }
-      } else {
+      } catch (err) {
+        console.error('Failed to fetch user:', err)
         setCurrentUser(null)
       }
       setIsVerifying(false)
