@@ -3,6 +3,7 @@ from typing import Dict
 import os
 import uuid
 import shutil
+import magic
 from .deps import get_current_user
 from ..schemas import UserResponse
 
@@ -14,6 +15,13 @@ UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 MAX_FILE_SIZE = 5 * 1024 * 1024 # 5 MB
+
+ALLOWED_MIME_TYPES = {
+    'image/jpeg', 'image/png', 'image/webp', 'image/gif', 
+    'audio/mpeg', 'audio/wav', 'audio/ogg', 'video/webm', 'video/mp4', 
+    'application/pdf', 'text/plain', 'application/msword', 
+    'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+}
 
 @router.post("", response_model=Dict[str, str])
 async def upload_file(
@@ -38,15 +46,15 @@ async def upload_file(
                 raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="File too large. Max 5MB allowed.")
         
         content_bytes = bytes(content)
+        
+        if len(content_bytes) > 0:
+            mime_type = magic.from_buffer(content_bytes[:2048], mime=True)
+            if mime_type not in ALLOWED_MIME_TYPES:
+                raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"File content type '{mime_type}' not allowed.")
     
         # Generate unique filename
         ext = os.path.splitext(file.filename)[1].lower()
         
-        # Allowlist of safe extensions
-        ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.mp3', '.wav', '.ogg', '.webm', '.mp4', '.pdf', '.txt', '.doc', '.docx'}
-        if ext not in ALLOWED_EXTENSIONS:
-            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"File extension {ext} not allowed.")
-            
         unique_filename = f"{uuid.uuid4()}{ext}"
         file_path = os.path.join(UPLOAD_DIR, unique_filename)
 

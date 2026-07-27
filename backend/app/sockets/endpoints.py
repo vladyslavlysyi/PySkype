@@ -20,7 +20,17 @@ async def get_user_from_token(token: str):
         return result.scalars().first()
 
 @router.websocket("/ws")
-async def websocket_endpoint(websocket: WebSocket, token: str):
+async def websocket_endpoint(websocket: WebSocket, token: str = None):
+    # Fallback to cookie if token is not in query params
+    if not token:
+        cookie_token = websocket.cookies.get("access_token")
+        if cookie_token and cookie_token.startswith("Bearer "):
+            token = cookie_token.split(" ")[1]
+
+    if not token:
+        await websocket.close(code=1008)
+        return
+
     user = await get_user_from_token(token)
     if not user:
         await websocket.close(code=1008)
@@ -41,6 +51,9 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
         "payload": {"user_id": user_id, "status": "ONLINE"}
     })
 
+    import time
+    message_timestamps = []
+
     try:
         while True:
             data = await websocket.receive_text()
@@ -48,6 +61,14 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                 await websocket.close(code=1009)
                 break
                 
+            # Rate limiting: max 5 messages per second
+            current_time = time.time()
+            message_timestamps = [ts for ts in message_timestamps if current_time - ts < 1.0]
+            if len(message_timestamps) >= 5:
+                await websocket.send_json({"type": "error", "payload": "Rate limit exceeded"})
+                continue
+            message_timestamps.append(current_time)
+
             print(f"WS Received: {data}", flush=True)
             try:
                 parsed_data = json.loads(data)

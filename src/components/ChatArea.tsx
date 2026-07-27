@@ -203,34 +203,44 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
     }
   }
 
+  const isSafeUrl = (url: string) => {
+    const parsedUrl = url.trim().toLowerCase();
+    if (parsedUrl.startsWith('javascript:') || parsedUrl.startsWith('data:') || parsedUrl.startsWith('vbscript:')) {
+      return false;
+    }
+    return true;
+  };
+
   const renderMessageContent = (content: string) => {
     return content.split('\n').map((line, idx) => {
       const trimmedLine = line.trim()
       const imgMatch = trimmedLine.match(/^!\[(.*?)\]\((.*?)\)$/)
       if (imgMatch) {
+        const safeImgUrl = isSafeUrl(imgMatch[2]) ? imgMatch[2] : '#';
         return (
-          <a key={idx} href={imgMatch[2]} target="_blank" rel="noopener noreferrer" className="block my-1">
-            <img src={imgMatch[2]} alt={imgMatch[1]} className="max-w-full rounded-lg max-h-64 object-cover hover:opacity-90 transition cursor-pointer" />
+          <a key={idx} href={safeImgUrl} target="_blank" rel="noopener noreferrer" className="block my-1">
+            <img src={safeImgUrl} alt={imgMatch[1]} className="max-w-full rounded-lg max-h-64 object-cover hover:opacity-90 transition cursor-pointer" />
           </a>
         )
       }
       const linkMatch = trimmedLine.match(/^\[(.*?)\]\((.*?)\)$/)
       if (linkMatch) {
+        const safeUrl = isSafeUrl(linkMatch[2]) ? linkMatch[2] : '#';
         if (linkMatch[1] === '🎤 Voice Message') {
           return (
             <div key={idx} className="my-1">
-              <VoiceMessagePlayer src={linkMatch[2]} />
+              <VoiceMessagePlayer src={safeUrl} />
             </div>
           )
         } else if (linkMatch[1] === '⭕ Video Message' || linkMatch[1] === '🎥 Video Message') {
           return (
             <div key={idx} className="my-1">
-              <VideoMessagePlayer src={linkMatch[2]} />
+              <VideoMessagePlayer src={safeUrl} />
             </div>
           )
         }
         return (
-          <a key={idx} href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="underline text-current opacity-90 hover:opacity-100 break-all block my-1 flex items-center gap-1">
+          <a key={idx} href={safeUrl} target="_blank" rel="noopener noreferrer" className="underline text-current opacity-90 hover:opacity-100 break-all block my-1 flex items-center gap-1">
             {linkMatch[1].startsWith('📎') ? null : '🔗'} {linkMatch[1]}
           </a>
         )

@@ -4,7 +4,9 @@ from typing import Optional
 from passlib.context import CryptContext
 from jose import jwt, JWTError
 
-SECRET_KEY = os.getenv("JWT_SECRET", "super-secret-key-12345")
+SECRET_KEY = os.getenv("JWT_SECRET")
+if not SECRET_KEY or SECRET_KEY == "super-secret-key-12345":
+    raise RuntimeError("CRITICAL SECURITY ERROR: JWT_SECRET environment variable is not set or uses default unsafe value!")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRATION_MINUTES", 60 * 24)) # 24 hours
 

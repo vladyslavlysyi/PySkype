@@ -1,7 +1,8 @@
-from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from typing import Optional, List
 from datetime import datetime
 from enum import Enum
+import re
 
 class UserStatus(str, Enum):
     ONLINE = "ONLINE"
@@ -20,7 +21,15 @@ class UserBase(BaseModel):
     description: Optional[str] = ""
 
 class UserCreate(UserBase):
-    password: str
+    password: str = Field(..., min_length=8)
+    
+    @field_validator('password')
+    def password_complexity(cls, v):
+        if not re.search(r"[A-Z]", v):
+            raise ValueError("Password must contain at least one uppercase letter")
+        if not re.search(r"\d", v):
+            raise ValueError("Password must contain at least one digit")
+        return v
 
 class UserUpdate(BaseModel):
     username: Optional[str] = None
