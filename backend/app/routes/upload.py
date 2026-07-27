@@ -26,10 +26,18 @@ async def upload_file(
     if not file.filename:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="No file provided")
 
-    # Read file size (by reading chunks until MAX_FILE_SIZE is reached)
-    content = await file.read()
-    if len(content) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="File too large. Max 5MB allowed.")
+    try:
+        # Read file in chunks to enforce size limit and avoid OOM
+        content = bytearray()
+        while True:
+            chunk = await file.read(1024 * 1024) # 1MB chunks
+            if not chunk:
+                break
+            content.extend(chunk)
+            if len(content) > MAX_FILE_SIZE:
+                raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="File too large. Max 5MB allowed.")
+        
+        content_bytes = bytes(content)
     
     # Generate unique filename
     ext = os.path.splitext(file.filename)[1].lower()
@@ -42,7 +50,13 @@ async def upload_file(
     unique_filename = f"{uuid.uuid4()}{ext}"
     file_path = os.path.join(UPLOAD_DIR, unique_filename)
 
-    with open(file_path, "wb") as f:
-        f.write(content)
+        with open(file_path, "wb") as f:
+            f.write(content_bytes)
 
-    return {"url": f"/uploads/{unique_filename}", "filename": file.filename}
+        return {"url": f"/uploads/{unique_filename}", "filename": file.filename}
+    except HTTPException:
+        raise
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Upload error: {str(e)}")
