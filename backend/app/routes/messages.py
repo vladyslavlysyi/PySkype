@@ -130,13 +130,18 @@ async def toggle_reaction(message_id: str, req: MessageReactionToggle, db: Async
             
     await db.commit()
     
-    # Aggregate counts for broadcast
-    agg_result = await db.execute(
-        select(MessageReaction.emoji, func.count(MessageReaction.id))
-        .where(MessageReaction.message_id == message_id)
-        .group_by(MessageReaction.emoji)
+    # Re-fetch updated message to send full object
+    updated_msg_result = await db.execute(
+        select(Message)
+        .where(Message.id == message_id)
+        .options(
+            selectinload(Message.sender),
+            selectinload(Message.reply_to_message),
+            selectinload(Message.reactions).selectinload(MessageReaction.user)
+        )
     )
-    reaction_counts = {row[0]: row[1] for row in agg_result.all()}
+    updated_msg = updated_msg_result.scalars().first()
+    msg_schema = MessageResponse.model_validate(updated_msg)
     
     # Get participant IDs for broadcast
     part_res = await db.execute(
@@ -145,26 +150,18 @@ async def toggle_reaction(message_id: str, req: MessageReactionToggle, db: Async
     )
     participant_ids = [row[0] for row in part_res.all()]
     
-    payload = {
-        "message_id": message_id,
-        "reaction_counts": reaction_counts,
-        "user_id": current_user.id,
-        "emoji": req.emoji,
-        "action": action
-    }
-    
     if hasattr(manager, 'broadcast_to_users'):
         await manager.broadcast_to_users(participant_ids, {
-            "type": "reaction_updated",
-            "payload": payload
+            "type": "message_edited",
+            "payload": msg_schema.model_dump(mode='json')
         })
     else:
         await manager.broadcast({
-            "type": "reaction_updated",
-            "payload": payload
+            "type": "message_edited",
+            "payload": msg_schema.model_dump(mode='json')
         })
     
-    return {"status": "success", "action": action, "counts": reaction_counts}
+    return {"status": "success", "action": action}
 
 @router.delete("/{message_id}")
 async def delete_message(message_id: str, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):

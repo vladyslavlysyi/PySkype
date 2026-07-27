@@ -392,7 +392,13 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
       }
     })
 
-    return () => { unsub(); unsubRead(); unsubDelete() }
+    const unsubEdited = subscribe('message_edited', (msg: Message) => {
+      if (msg.conversation_id === activeConversation?.id) {
+        setMessages(prev => prev.map(m => m.id === msg.id ? msg : m))
+      }
+    })
+
+    return () => { unsub(); unsubRead(); unsubDelete(); unsubEdited(); }
   }, [isConnected, activeConversation, subscribe, currentUser, sendMessage])
 
   const [activeMenuId, setActiveMenuId] = useState<string | null>(null)
