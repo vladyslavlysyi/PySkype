@@ -139,6 +139,34 @@ async def startup():
     except Exception:
         pass
 
+import traceback
+from sqlalchemy.orm import selectinload
+from .models import Message, MessageReaction
+
+@app.get("/api/debug_messages")
+async def debug_messages(db: AsyncSession = Depends(get_db)):
+    try:
+        result = await db.execute(
+            select(Message)
+            .options(
+                selectinload(Message.sender),
+                selectinload(Message.reply_to_message),
+                selectinload(Message.reactions).selectinload(MessageReaction.user)
+            )
+            .limit(10)
+        )
+        msgs = result.scalars().all()
+        from .schemas import MessageResponse
+        res = []
+        for m in msgs:
+            try:
+                res.append(MessageResponse.model_validate(m).model_dump(mode='json'))
+            except Exception as e:
+                res.append({"error": str(e), "trace": traceback.format_exc(), "msg_id": m.id})
+        return {"status": "ok", "messages": res}
+    except Exception as e:
+        return {"status": "error", "error": str(e), "trace": traceback.format_exc()}
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
