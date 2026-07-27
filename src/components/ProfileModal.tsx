@@ -1,7 +1,9 @@
-import React, { useState, useEffect } from 'react'
-import { UserCircle, X, Mail, Info, Circle, Edit2, Check, Lock, User as UserIcon, Image as ImageIcon, MessageSquare, Phone, Video, Calendar, Image as LucideImage, File, Link as LinkIcon, Mic } from 'lucide-react'
+import React, { useState, useEffect, useCallback } from 'react'
+import { UserCircle, X, Mail, Info, Circle, Edit2, Check, Lock, User as UserIcon, Image as ImageIcon, MessageSquare, Phone, Video, Calendar, Image as LucideImage, File, Link as LinkIcon, Mic, ZoomIn, ZoomOut } from 'lucide-react'
 import { User, useAppStore } from '@/store/useAppStore'
 import { VoiceMessagePlayer } from './VoiceMessagePlayer'
+import Cropper from 'react-easy-crop'
+import getCroppedImg from '@/utils/cropImage'
 
 interface ProfileModalProps {
   user: User
@@ -35,13 +37,37 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
   const [isLoading, setIsLoading] = useState(false)
   const fileInputRef = React.useRef<HTMLInputElement>(null)
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Cropper states
+  const [crop, setCrop] = useState({ x: 0, y: 0 })
+  const [zoom, setZoom] = useState(1)
+  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null)
+  const [imageSrc, setImageSrc] = useState<string | null>(null)
+  const [isCropping, setIsCropping] = useState(false)
+
+  const handleAvatarUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
+    const reader = new FileReader()
+    reader.addEventListener('load', () => {
+      setImageSrc(reader.result?.toString() || null)
+      setIsCropping(true)
+    })
+    reader.readAsDataURL(file)
+  }
+
+  const onCropComplete = useCallback((croppedArea: any, croppedAreaPx: any) => {
+    setCroppedAreaPixels(croppedAreaPx)
+  }, [])
+
+  const handleCropSave = async () => {
+    if (!imageSrc || !croppedAreaPixels) return
     setIsLoading(true)
-    const fd = new FormData()
-    fd.append("file", file)
     try {
+      const croppedImageBlob = await getCroppedImg(imageSrc, croppedAreaPixels, 0)
+      const file = new File([croppedImageBlob], "avatar.jpg", { type: "image/jpeg" })
+      const fd = new FormData()
+      fd.append("file", file)
+      
       const res = await fetch("/api/upload", {
         method: "POST",
         headers: { "Authorization": `Bearer ${localStorage.getItem('token')}` },
@@ -50,6 +76,8 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
       if (res.ok) {
         const data = await res.json()
         setFormData({ ...formData, avatarUrl: data.url })
+        setIsCropping(false)
+        setImageSrc(null)
       }
     } catch (err) {
       console.error(err)
@@ -422,128 +450,144 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
               </div>
             </>
           ) : (
-            <div className="p-6 space-y-4">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-6">Edit Profile</h2>
-              <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Username</label>
-                <div className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 dark:bg-[#11100f] border border-gray-200 dark:border-gray-700 focus-within:border-[#0078d4] transition">
-                  <UserIcon className="w-5 h-5 text-gray-400" />
-                  <input 
-                    type="text" 
-                    value={formData.username}
-                    onChange={e => setFormData({...formData, username: e.target.value})}
-                    className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 dark:text-white"
-                  />
-                </div>
+            <div className="p-0 flex flex-col h-full bg-[#f3f2f1] dark:bg-[#11100f]">
+              <div className="p-6 flex-shrink-0 bg-white dark:bg-[#201f1e] border-b border-gray-100 dark:border-gray-800 shadow-sm relative">
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Edit Profile</h2>
+                <p className="text-xs text-gray-500 mt-1">Update your personal details</p>
               </div>
 
-              <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Phone Number</label>
-                <div className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 dark:bg-[#11100f] border border-gray-200 dark:border-gray-700 focus-within:border-[#0078d4] transition">
-                  <Phone className="w-5 h-5 text-gray-400" />
-                  <input 
-                    type="tel" 
-                    value={formData.phone_number}
-                    placeholder="+380..."
-                    onChange={e => setFormData({...formData, phone_number: e.target.value})}
-                    className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 dark:text-white"
-                  />
-                </div>
-              </div>
+              <div className="flex-1 overflow-y-auto p-6 space-y-6">
+                {/* Inputs block */}
+                <div className="bg-white dark:bg-[#201f1e] rounded-2xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-800">
+                  {/* Username */}
+                  <div className="group flex items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800 focus-within:bg-gray-50 dark:focus-within:bg-[#323130] transition-colors">
+                    <UserIcon className="w-5 h-5 text-gray-400 group-focus-within:text-[#0078d4] transition-colors w-12" />
+                    <div className="flex-1 relative">
+                      <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider absolute -top-1 left-0">Username</label>
+                      <input 
+                        type="text" 
+                        value={formData.username}
+                        onChange={e => setFormData({...formData, username: e.target.value})}
+                        className="w-full bg-transparent border-none outline-none text-sm font-medium text-gray-900 dark:text-white pt-4 pb-1"
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Phone */}
+                  <div className="group flex items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800 focus-within:bg-gray-50 dark:focus-within:bg-[#323130] transition-colors">
+                    <Phone className="w-5 h-5 text-gray-400 group-focus-within:text-[#0078d4] transition-colors w-12" />
+                    <div className="flex-1 relative">
+                      <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider absolute -top-1 left-0">Phone</label>
+                      <input 
+                        type="tel" 
+                        value={formData.phone_number}
+                        placeholder="+380..."
+                        onChange={e => setFormData({...formData, phone_number: e.target.value})}
+                        className="w-full bg-transparent border-none outline-none text-sm font-medium text-gray-900 dark:text-white pt-4 pb-1"
+                      />
+                    </div>
+                  </div>
 
-              <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Birthday</label>
-                <div className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 dark:bg-[#11100f] border border-gray-200 dark:border-gray-700 focus-within:border-[#0078d4] transition">
-                  <Calendar className="w-5 h-5 text-gray-400" />
-                  <input 
-                    type="text" 
-                    value={formData.birthday}
-                    placeholder="e.g., Nov 24"
-                    onChange={e => setFormData({...formData, birthday: e.target.value})}
-                    className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 dark:text-white"
-                  />
+                  {/* Birthday */}
+                  <div className="group flex items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800 focus-within:bg-gray-50 dark:focus-within:bg-[#323130] transition-colors">
+                    <Calendar className="w-5 h-5 text-gray-400 group-focus-within:text-[#0078d4] transition-colors w-12" />
+                    <div className="flex-1 relative">
+                      <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider absolute -top-1 left-0">Birthday</label>
+                      <input 
+                        type="text" 
+                        value={formData.birthday}
+                        placeholder="e.g., Nov 24"
+                        onChange={e => setFormData({...formData, birthday: e.target.value})}
+                        className="w-full bg-transparent border-none outline-none text-sm font-medium text-gray-900 dark:text-white pt-4 pb-1"
+                      />
+                    </div>
+                  </div>
+                  
+                  {/* Bio */}
+                  <div className="group flex items-start px-4 py-3 focus-within:bg-gray-50 dark:focus-within:bg-[#323130] transition-colors">
+                    <Info className="w-5 h-5 text-gray-400 group-focus-within:text-[#0078d4] transition-colors w-12 mt-3" />
+                    <div className="flex-1 relative">
+                      <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider absolute -top-1 left-0">Bio</label>
+                      <textarea 
+                        value={formData.description}
+                        onChange={e => setFormData({...formData, description: e.target.value})}
+                        rows={2}
+                        placeholder="Tell us about yourself"
+                        className="w-full bg-transparent border-none outline-none text-sm font-medium text-gray-900 dark:text-white pt-4 pb-1 resize-none custom-scrollbar"
+                      />
+                    </div>
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Bio</label>
-                <div className="flex items-start gap-3 p-2 rounded-xl bg-gray-50 dark:bg-[#11100f] border border-gray-200 dark:border-gray-700 focus-within:border-[#0078d4] transition">
-                  <Info className="w-5 h-5 text-gray-400 mt-0.5" />
-                  <textarea 
-                    value={formData.description}
-                    onChange={e => setFormData({...formData, description: e.target.value})}
-                    rows={3}
-                    placeholder="Tell us about yourself"
-                    className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 dark:text-white resize-none custom-scrollbar"
-                  />
+                <div className="bg-white dark:bg-[#201f1e] rounded-2xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-800 p-4">
+                  <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block mb-3 pl-2">Theme Color</label>
+                  <div className="flex flex-wrap gap-3 pl-2">
+                    {[
+                      'linear-gradient(to right, #0078d4, #00bcf2)',
+                      'linear-gradient(to right, #8a2be2, #4b0082)',
+                      'linear-gradient(to right, #ff7e5f, #feb47b)',
+                      'linear-gradient(to right, #00b4db, #0083b0)',
+                      'linear-gradient(to right, #11998e, #38ef7d)',
+                      'linear-gradient(to right, #333333, #000000)',
+                    ].map((color, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setFormData({...formData, theme_color: color})}
+                        className={`w-10 h-10 rounded-full transition-all ${formData.theme_color === color || (!formData.theme_color && idx === 0) ? 'ring-2 ring-offset-2 ring-offset-white dark:ring-offset-[#201f1e] ring-[#0078d4] scale-110 shadow-md' : 'hover:scale-105 opacity-80 hover:opacity-100'}`}
+                        style={{ background: color }}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-2">Theme Color</label>
-                <div className="flex flex-wrap gap-3">
-                  {[
-                    'linear-gradient(to right, #0078d4, #00bcf2)',
-                    'linear-gradient(to right, #8a2be2, #4b0082)',
-                    'linear-gradient(to right, #ff7e5f, #feb47b)',
-                    'linear-gradient(to right, #00b4db, #0083b0)',
-                    'linear-gradient(to right, #11998e, #38ef7d)',
-                    'linear-gradient(to right, #333333, #000000)',
-                  ].map((color, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setFormData({...formData, theme_color: color})}
-                      className={`w-8 h-8 rounded-full border-2 transition-transform ${formData.theme_color === color || (!formData.theme_color && idx === 0) ? 'border-white dark:border-white scale-110 shadow-lg' : 'border-transparent hover:scale-105'}`}
-                      style={{ background: color }}
-                    />
-                  ))}
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Email address</label>
-                <div className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 dark:bg-[#11100f] border border-gray-200 dark:border-gray-700 focus-within:border-[#0078d4] transition">
-                  <Mail className="w-5 h-5 text-gray-400" />
-                  <input 
-                    type="email" 
-                    value={formData.email}
-                    onChange={e => setFormData({...formData, email: e.target.value})}
-                    className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 dark:text-white"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Change Password (optional)</label>
-                <div className="flex items-center gap-3 p-2 rounded-xl bg-gray-50 dark:bg-[#11100f] border border-gray-200 dark:border-gray-700 focus-within:border-[#0078d4] transition">
-                  <Lock className="w-5 h-5 text-gray-400" />
-                  <input 
-                    type="password"
-                    placeholder="Leave blank to keep current"
-                    value={formData.password}
-                    onChange={e => setFormData({...formData, password: e.target.value})}
-                    className="flex-1 bg-transparent border-none outline-none text-sm text-gray-900 dark:text-white"
-                  />
+                <div className="bg-white dark:bg-[#201f1e] rounded-2xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-800">
+                  {/* Email */}
+                  <div className="group flex items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800 focus-within:bg-gray-50 dark:focus-within:bg-[#323130] transition-colors">
+                    <Mail className="w-5 h-5 text-gray-400 group-focus-within:text-[#0078d4] transition-colors w-12" />
+                    <div className="flex-1 relative">
+                      <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider absolute -top-1 left-0">Email address</label>
+                      <input 
+                        type="email" 
+                        value={formData.email}
+                        onChange={e => setFormData({...formData, email: e.target.value})}
+                        className="w-full bg-transparent border-none outline-none text-sm font-medium text-gray-900 dark:text-white pt-4 pb-1"
+                      />
+                    </div>
+                  </div>
+                  {/* Password */}
+                  <div className="group flex items-center px-4 py-3 focus-within:bg-gray-50 dark:focus-within:bg-[#323130] transition-colors">
+                    <Lock className="w-5 h-5 text-gray-400 group-focus-within:text-[#0078d4] transition-colors w-12" />
+                    <div className="flex-1 relative">
+                      <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider absolute -top-1 left-0">Change Password</label>
+                      <input 
+                        type="password"
+                        placeholder="Leave blank to keep current"
+                        value={formData.password}
+                        onChange={e => setFormData({...formData, password: e.target.value})}
+                        className="w-full bg-transparent border-none outline-none text-sm font-medium text-gray-900 dark:text-white pt-4 pb-1"
+                      />
+                    </div>
+                  </div>
                 </div>
               </div>
               
-              <div className="pt-4 flex gap-3 pb-6">
+              <div className="p-4 bg-white dark:bg-[#201f1e] border-t border-gray-100 dark:border-gray-800 flex gap-3 flex-shrink-0">
                 <button 
                   onClick={() => setIsEditing(false)}
-                  className="flex-1 py-2.5 rounded-xl border border-gray-200 dark:border-gray-700 font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#323130] transition"
+                  className="flex-1 py-3 rounded-xl font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#323130] transition"
                 >
                   Cancel
                 </button>
                 <button 
-                  onClick={handleSave}
+                  onClick={handleSave} 
                   disabled={isLoading}
-                  className="flex-1 py-2.5 rounded-xl bg-[#0078d4] text-white font-medium hover:bg-[#005a9e] transition flex items-center justify-center gap-2 disabled:opacity-50"
+                  className="flex-1 py-3 rounded-xl bg-[#0078d4] text-white font-medium hover:bg-[#005a9e] transition flex items-center justify-center gap-2 shadow-sm disabled:opacity-50"
                 >
                   {isLoading ? (
                     <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                   ) : (
                     <>
-                      <Check className="w-4 h-4" /> Save
+                      <Check className="w-5 h-5" /> Save Changes
                     </>
                   )}
                 </button>
@@ -551,6 +595,62 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
             </div>
           )}
         </div>
+
+        {isCropping && imageSrc && (
+          <div className="absolute inset-0 z-50 bg-black flex flex-col rounded-2xl overflow-hidden">
+            <div className="flex-1 relative">
+              <Cropper
+                image={imageSrc}
+                crop={crop}
+                zoom={zoom}
+                aspect={1}
+                cropShape="round"
+                showGrid={false}
+                onCropChange={setCrop}
+                onCropComplete={onCropComplete}
+                onZoomChange={setZoom}
+              />
+            </div>
+            <div className="p-6 bg-[#201f1e] flex flex-col gap-4 border-t border-gray-800">
+              <div className="flex items-center gap-4">
+                <ZoomOut className="w-5 h-5 text-gray-400" />
+                <input
+                  type="range"
+                  value={zoom}
+                  min={1}
+                  max={3}
+                  step={0.1}
+                  aria-labelledby="Zoom"
+                  onChange={(e) => {
+                    setZoom(Number(e.target.value))
+                  }}
+                  className="flex-1 accent-[#0078d4]"
+                />
+                <ZoomIn className="w-5 h-5 text-gray-400" />
+              </div>
+              <div className="flex justify-end gap-3">
+                <button 
+                  onClick={() => {
+                    setIsCropping(false)
+                    setImageSrc(null)
+                    if (fileInputRef.current) fileInputRef.current.value = ''
+                  }}
+                  className="px-4 py-2 text-white hover:bg-white/10 rounded-lg transition"
+                >
+                  Cancel
+                </button>
+                <button 
+                  onClick={handleCropSave}
+                  disabled={isLoading}
+                  className="px-6 py-2 bg-[#0078d4] hover:bg-[#005a9e] text-white rounded-lg transition flex items-center justify-center min-w-[100px]"
+                >
+                  {isLoading ? <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Apply'}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   )
