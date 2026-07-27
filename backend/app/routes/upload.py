@@ -32,7 +32,13 @@ async def upload_file(
         raise HTTPException(status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE, detail="File too large. Max 5MB allowed.")
     
     # Generate unique filename
-    ext = os.path.splitext(file.filename)[1]
+    ext = os.path.splitext(file.filename)[1].lower()
+    
+    # Allowlist of safe extensions
+    ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.mp3', '.wav', '.ogg', '.webm', '.mp4', '.pdf', '.txt', '.doc', '.docx'}
+    if ext not in ALLOWED_EXTENSIONS:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"File extension {ext} not allowed.")
+        
     unique_filename = f"{uuid.uuid4()}{ext}"
     file_path = os.path.join(UPLOAD_DIR, unique_filename)
 

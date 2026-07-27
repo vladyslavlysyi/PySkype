@@ -108,14 +108,24 @@ async def delete_chat(conversation_id: str, db: AsyncSession = Depends(get_db), 
     if not participant:
         raise HTTPException(status_code=403, detail="Not a participant of this conversation")
     
-    # Simple implementation: Delete entire conversation (will cascade delete messages and participants)
-    conv_result = await db.execute(
-        select(Conversation)
-        .where(Conversation.id == conversation_id)
-    )
-    conv = conv_result.scalars().first()
-    if conv:
-        await db.delete(conv)
-        await db.commit()
+    # Soft-delete: Just remove the current user from the participants
+    await db.delete(participant)
+    await db.commit()
     
+    # Check if there are any participants left. If none, we can safely delete the conversation and messages.
+    part_count_result = await db.execute(
+        select(func.count(ConversationParticipant.user_id))
+        .where(ConversationParticipant.conversation_id == conversation_id)
+    )
+    count = part_count_result.scalar()
+    
+    if count == 0:
+        conv_result = await db.execute(
+            select(Conversation).where(Conversation.id == conversation_id)
+        )
+        conv = conv_result.scalars().first()
+        if conv:
+            await db.delete(conv)
+            await db.commit()
+            
     return {"status": "success"}

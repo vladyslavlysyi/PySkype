@@ -44,6 +44,10 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
     try:
         while True:
             data = await websocket.receive_text()
+            if len(data) > 65536: # 64KB limit
+                await websocket.close(code=1009)
+                break
+                
             print(f"WS Received: {data}", flush=True)
             try:
                 parsed_data = json.loads(data)
@@ -92,6 +96,14 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                         )
                         loaded_msg = result.scalars().first()
                         
+                        # Get all other participants to send to
+                        part_result = await session.execute(
+                            select(ConversationParticipant)
+                            .where(ConversationParticipant.conversation_id == conversation_id)
+                            .where(ConversationParticipant.user_id != user_id)
+                        )
+                        partners = part_result.scalars().all()
+                        
                         msg_payload = {
                             "id": loaded_msg.id,
                             "conversation_id": loaded_msg.conversation_id,
@@ -106,12 +118,12 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                             }
                         }
 
-                    # Send to target and back to self
-                    if target_user_id:
+                    # Send to target participants and back to self
+                    for p in partners:
                         await manager.send_personal_message({
                             "type": "receive_message",
                             "payload": msg_payload
-                        }, target_user_id)
+                        }, p.user_id)
                     
                     await manager.send_personal_message({
                         "type": "receive_message",
@@ -122,6 +134,15 @@ async def websocket_endpoint(websocket: WebSocket, token: str):
                     conversation_id = payload.get("conversation_id")
                     if conversation_id:
                         async with AsyncSessionLocal() as session:
+                            # Verify participant
+                            part_result = await session.execute(
+                                select(ConversationParticipant)
+                                .where(ConversationParticipant.conversation_id == conversation_id)
+                                .where(ConversationParticipant.user_id == user_id)
+                            )
+                            if not part_result.scalars().first():
+                                continue # Not a participant
+                                
                             # Update all messages in this conversation not sent by this user
                             from sqlalchemy import update
                             stmt = (

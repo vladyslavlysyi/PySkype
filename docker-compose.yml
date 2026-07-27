@@ -23,8 +23,9 @@ services:
       context: ./backend
     container_name: skype_backend
     environment:
-      - DATABASE_URL=postgresql+asyncpg://postgres:postgrespassword@db:5432/skype_clone
-      - JWT_SECRET=super-secret-key-12345
+      - DATABASE_URL=${DATABASE_URL:-postgresql+asyncpg://postgres:postgrespassword@db:5432/skype_clone}
+      - JWT_SECRET=${JWT_SECRET:-super-secret-key-12345}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:3000,http://localhost,https://164-90-221-45.nip.io}
     volumes:
       - uploads_data:/app/uploads
     depends_on:

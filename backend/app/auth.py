@@ -6,7 +6,7 @@ from jose import jwt, JWTError
 
 SECRET_KEY = os.getenv("JWT_SECRET", "super-secret-key-12345")
 ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24 * 7 # 7 days
+ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("JWT_EXPIRATION_MINUTES", 60 * 24)) # 24 hours
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
