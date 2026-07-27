@@ -55,9 +55,11 @@ os.makedirs("uploads", exist_ok=True)
 app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
 
 # Include Routers
+from .routes import auth, users, chats, upload, messages
 app.include_router(auth.router)
 app.include_router(users.router)
 app.include_router(chats.router)
+app.include_router(messages.router)
 app.include_router(upload.router, prefix="/api/upload", tags=["Upload"])
 app.include_router(endpoints.router, prefix="/api")
 

@@ -58,10 +58,35 @@ class UserResponse(UserBase):
 
 # --- Message Schemas ---
 class MessageBase(BaseModel):
-    content: str
+    content: str | None = Field(None, max_length=10000)
 
 class MessageCreate(MessageBase):
     conversation_id: str
+    reply_to_message_id: Optional[str] = None
+
+class MessageUpdate(BaseModel):
+    content: str = Field(..., max_length=10000)
+
+class MessageReactionToggle(BaseModel):
+    emoji: str = Field(..., max_length=10)
+
+class MessageReactionResponse(BaseModel):
+    emoji: str
+    user_id: str
+    created_at: datetime
+    user: UserResponse
+
+    class Config:
+        from_attributes = True
+
+class MessagePreview(BaseModel):
+    id: str
+    sender_id: str
+    content: str | None
+    is_deleted: bool = False
+    
+    class Config:
+        from_attributes = True
 
 class MessageResponse(MessageBase):
     id: str
@@ -69,6 +94,12 @@ class MessageResponse(MessageBase):
     sender_id: str
     is_read: bool = False
     created_at: datetime
+    is_edited: bool = False
+    edited_at: Optional[datetime] = None
+    deleted_by: str = ""
+    reply_to_message_id: Optional[str] = None
+    reply_to_message: Optional[MessagePreview] = None
+    reactions: List[MessageReactionResponse] = []
     sender: Optional[UserResponse] = None
 
     class Config:
@@ -77,12 +108,21 @@ class MessageResponse(MessageBase):
 class CreateChatRequest(BaseModel):
     targetUserId: str
 
+class CreateGroupRequest(BaseModel):
+    name: str = Field(..., max_length=100)
+    member_ids: List[str]
+    avatar_url: Optional[str] = None
+
+class ManageMembersRequest(BaseModel):
+    member_ids: List[str]
+
 # --- Conversation Schemas ---
 class ConversationParticipantResponse(BaseModel):
     user: UserResponse
     joined_at: datetime
     is_pinned: bool = False
     chat_bg: Optional[str] = None
+    role: str = "member"
 
     class Config:
         from_attributes = True
@@ -94,6 +134,16 @@ class ConversationResponse(BaseModel):
     participants: List[ConversationParticipantResponse]
     last_message: Optional[dict] = None
 
+    class Config:
+        from_attributes = True
+
+class PinnedMessageResponse(BaseModel):
+    id: str
+    message_id: str
+    pinned_by: str
+    pinned_at: datetime
+    message: Optional[MessageResponse] = None
+    
     class Config:
         from_attributes = True
 

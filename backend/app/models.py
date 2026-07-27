@@ -1,6 +1,6 @@
 import enum
 import uuid
-from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Enum, Text
+from sqlalchemy import Column, String, Boolean, DateTime, ForeignKey, Enum, Text, UniqueConstraint
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 from .database import Base
@@ -53,6 +53,7 @@ class ConversationParticipant(Base):
     joined_at = Column(DateTime(timezone=True), server_default=func.now())
     is_pinned = Column(Boolean, default=False)
     chat_bg = Column(String, nullable=True)
+    role = Column(String, default="member") # owner, admin, member
 
     user = relationship("User", back_populates="conversations")
     conversation = relationship("Conversation", back_populates="participants")
@@ -67,6 +68,38 @@ class Message(Base):
     is_read = Column(Boolean, default=False)
     deleted_by = Column(String, default="")
     created_at = Column(DateTime(timezone=True), server_default=func.now())
+    is_edited = Column(Boolean, default=False)
+    edited_at = Column(DateTime(timezone=True), nullable=True)
+    reply_to_message_id = Column(String, ForeignKey("messages.id", ondelete="SET NULL"), nullable=True)
 
     sender = relationship("User", back_populates="messages")
     conversation = relationship("Conversation", back_populates="messages")
+    reply_to_message = relationship("Message", remote_side="Message.id")
+    reactions = relationship("MessageReaction", back_populates="message", cascade="all, delete-orphan")
+
+class MessageReaction(Base):
+    __tablename__ = "message_reactions"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    message_id = Column(String, ForeignKey("messages.id", ondelete="CASCADE"), nullable=False)
+    user_id = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    emoji = Column(String, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    __table_args__ = (UniqueConstraint('message_id', 'user_id', 'emoji', name='_message_user_emoji_uc'),)
+
+    message = relationship("Message", back_populates="reactions")
+    user = relationship("User")
+
+class PinnedMessage(Base):
+    __tablename__ = "pinned_messages"
+
+    id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
+    conversation_id = Column(String, ForeignKey("conversations.id", ondelete="CASCADE"), nullable=False)
+    message_id = Column(String, ForeignKey("messages.id", ondelete="CASCADE"), nullable=False)
+    pinned_by = Column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+    pinned_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    conversation = relationship("Conversation")
+    message = relationship("Message")
+    pinner = relationship("User")

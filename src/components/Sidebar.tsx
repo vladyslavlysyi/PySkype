@@ -1,16 +1,18 @@
 'use client'
 
 import React, { useEffect, useState } from 'react'
-import { Search, UserCircle, MessageSquare, Phone, MoreVertical, CheckCircle2, Clock, XCircle, Moon } from 'lucide-react'
+import { Search, UserCircle, MessageSquare, Phone, MoreVertical, CheckCircle2, Clock, XCircle, Moon, Users } from 'lucide-react'
 import { getAuthHeaders } from '@/lib/csrf'
 import { useAppStore, User } from '@/store/useAppStore'
 import { ProfileModal } from './ProfileModal'
+import { GroupModal } from './GroupModal'
 import { useWebSocket } from '@/contexts/WebSocketContext'
 
 export const Sidebar = () => {
   const { currentUser, conversations, setConversations, activeConversation, setActiveConversation, searchQuery, setSearchQuery, searchResults, setSearchResults } = useAppStore()
   const [isSearching, setIsSearching] = useState(false)
   const [isProfileOpen, setIsProfileOpen] = useState(false)
+  const [isGroupModalOpen, setIsGroupModalOpen] = useState(false)
   const { isConnected, subscribe } = useWebSocket()
 
   const fetchConversations = async () => {
@@ -206,9 +208,9 @@ export const Sidebar = () => {
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="p-4 pb-2">
-        <div className="relative">
+      {/* Search Bar & New Group */}
+      <div className="p-4 pb-2 flex gap-2">
+        <div className="relative flex-1">
           <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-500" />
           <input
             type="text"
@@ -218,6 +220,13 @@ export const Sidebar = () => {
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
+        <button 
+          onClick={() => setIsGroupModalOpen(true)}
+          title="New Group Chat"
+          className="w-9 h-9 flex items-center justify-center rounded-full bg-blue-50 dark:bg-blue-900/20 text-[#0078d4] hover:bg-blue-100 dark:hover:bg-blue-900/40 transition"
+        >
+          <Users className="w-5 h-5" />
+        </button>
       </div>
 
       {/* Conversation List / Search Results */}
@@ -273,17 +282,23 @@ export const Sidebar = () => {
                     className={`relative flex items-center gap-3 p-2 rounded-lg cursor-pointer transition group ${isActive ? 'bg-[#e1dfdd] dark:bg-[#2b5278]' : 'hover:bg-gray-200 dark:hover:bg-[#323130]'}`}
                   >
                     <div className="relative flex-shrink-0">
-                      {partner?.avatar_url ? (
+                      {conv.type === 'GROUP' ? (
+                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[#0078d4]">
+                          <Users className="w-5 h-5" />
+                        </div>
+                      ) : partner?.avatar_url ? (
                         <img src={partner.avatar_url} alt="avatar" className="w-10 h-10 rounded-full object-cover" />
                       ) : (
                         <UserCircle className="w-10 h-10 text-gray-500" />
                       )}
-                      {partner && <div className="absolute bottom-0 right-0">{getStatusIcon(partner.status)}</div>}
+                      {partner && conv.type !== 'GROUP' && <div className="absolute bottom-0 right-0">{getStatusIcon(partner.status)}</div>}
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex justify-between items-baseline">
                         <div className="flex items-center gap-1">
-                          <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">{conv.type === 'GROUP' ? 'Group Chat' : partner?.username}</h4>
+                          <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
+                            {conv.type === 'GROUP' ? `Group Chat (${conv.participants.length})` : partner?.username}
+                          </h4>
                           {isPinned && <span className="text-[10px] text-[#0078d4]">📌</span>}
                         </div>
                         <span className="text-[10px] text-gray-500">
@@ -342,6 +357,7 @@ export const Sidebar = () => {
           isMe={true} 
         />
       )}
+      <GroupModal isOpen={isGroupModalOpen} onClose={() => setIsGroupModalOpen(false)} onGroupCreated={fetchConversations} />
     </div>
   )
 }

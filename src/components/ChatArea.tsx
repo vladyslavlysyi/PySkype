@@ -35,6 +35,9 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
   const scrollRef = useRef<HTMLDivElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
   const audioChunksRef = useRef<Blob[]>([])
+  
+  const [editingMessage, setEditingMessage] = useState<Message | null>(null)
+  const [replyingToMessage, setReplyingToMessage] = useState<Message | null>(null)
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -441,23 +444,53 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
     }
   }, [messages])
 
-  const sendMessageToSocket = () => {
-    if (!text.trim() || !activeConversation || !isConnected || !currentUser) return
+  const sendMessageToSocket = async () => {
+    if (!text.trim()) return
 
-    const receiverIds = activeConversation.participants
-      .filter(p => p.user.id !== currentUser.id)
-      .map(p => p.user.id)
+    if (editingMessage) {
+      try {
+        const res = await fetch(`/api/messages/${editingMessage.id}`, {
+          method: 'PATCH',
+          headers: {
+            ...getAuthHeaders(),
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ content: text.trim() })
+        })
+        if (res.ok) {
+          setText('')
+          setEditingMessage(null)
+        }
+      } catch (err) {
+        console.error(err)
+      }
+      return
+    }
 
-    // For FastAPI backend we might send to multiple targets, but currently our backend supports target_user_id
-    // If it's a direct message, receiverIds[0] is the target
-    const targetUserId = receiverIds.length > 0 ? receiverIds[0] : undefined
+    if (isConnected && activeConversation) {
+      sendMessage("send_message", {
+        conversation_id: activeConversation.id,
+        content: text.trim(),
+        reply_to_message_id: replyingToMessage ? replyingToMessage.id : null
+      })
+      setText('')
+      setReplyingToMessage(null)
+    }
+  }
 
-    sendMessage('send_message', {
-      conversation_id: activeConversation.id,
-      content: text
-    }, targetUserId)
-
-    setText('')
+  const toggleReaction = async (messageId: string, emoji: string) => {
+    try {
+      await fetch(`/api/messages/${messageId}/reactions`, {
+        method: 'POST',
+        headers: {
+          ...getAuthHeaders(),
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ emoji })
+      })
+    } catch (err) {
+      console.error(err)
+    }
   }
 
   if (!activeConversation) {
@@ -640,6 +673,7 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
           return (
             <div 
               key={msg.id} 
+              id={`msg-${msg.id}`}
               className={`flex items-center gap-3 w-full ${isMine ? 'justify-end' : 'justify-start'} ${isSelectionMode ? 'cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 -mx-2 px-2 rounded-xl transition-colors' : ''}`}
               onClick={() => {
                 if (isSelectionMode) toggleSelection(msg.id)
@@ -656,8 +690,21 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
                   <UserCircle className="w-8 h-8 text-gray-400 mt-auto flex-shrink-0" />
                 )}
                 <div className={`px-4 py-2.5 rounded-2xl relative ${isMine ? 'bg-[#0078d4] text-white rounded-br-sm' : 'bg-[#f3f2f1] dark:bg-[#201f1e] text-gray-900 dark:text-gray-100 rounded-bl-sm'}`}>
+                  {msg.reply_to_message && (
+                    <div 
+                      className={`mb-2 pl-2 border-l-2 text-sm cursor-pointer ${isMine ? 'border-white/50 bg-black/10' : 'border-[#0078d4] bg-black/5 dark:bg-white/5'} rounded-r p-1`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        document.getElementById(`msg-${msg.reply_to_message?.id}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                      }}
+                    >
+                      <span className="font-semibold opacity-80 text-xs">Reply</span>
+                      <p className="truncate opacity-90 max-w-[200px]">{msg.reply_to_message.content}</p>
+                    </div>
+                  )}
                   <div className="text-sm leading-relaxed pb-3">{renderMessageContent(msg.content)}</div>
                   <div className={`absolute bottom-1 right-2 flex items-center gap-1 text-[10px] ${isMine ? 'text-blue-100' : 'text-gray-500'}`}>
+                    {msg.is_edited && <span className="opacity-70">(edited)</span>}
                     <span>{new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                     {isMine && (
                       msg.is_read ? (
@@ -668,6 +715,26 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
                     )}
                   </div>
                 </div>
+
+                {/* Reactions Display */}
+                {msg.reactions && msg.reactions.length > 0 && (
+                  <div className={`absolute -bottom-3 flex flex-wrap gap-1 ${isMine ? 'right-4' : 'left-4'}`}>
+                    {Array.from(new Set(msg.reactions.map(r => r.emoji))).map(emoji => {
+                      const count = msg.reactions?.filter(r => r.emoji === emoji).length || 0;
+                      const hasReacted = msg.reactions?.some(r => r.emoji === emoji && r.user_id === currentUser?.id);
+                      return (
+                        <button 
+                          key={emoji}
+                          onClick={(e) => { e.stopPropagation(); toggleReaction(msg.id, emoji); }}
+                          className={`flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded-full border ${hasReacted ? 'bg-blue-100 border-blue-300 dark:bg-blue-900/50 dark:border-blue-700' : 'bg-white border-gray-200 dark:bg-[#2d2c2c] dark:border-gray-700 shadow-sm'}`}
+                        >
+                          <span>{emoji}</span>
+                          <span className={hasReacted ? 'text-blue-600 dark:text-blue-300' : 'text-gray-600 dark:text-gray-400'}>{count}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                )}
 
                 {/* Message Actions Menu */}
                 {!isSelectionMode && (
@@ -684,7 +751,18 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
                     
                     {activeMenuId === msg.id && (
                       <div className="absolute bottom-full mb-2 right-0 w-48 bg-white dark:bg-[#2d2c2c] rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.1)] dark:shadow-[0_0_15px_rgba(0,0,0,0.3)] border border-gray-200 dark:border-gray-700 py-1 z-[100]">
-                        <button 
+                        <div className="flex justify-between px-2 py-2 border-b border-gray-100 dark:border-gray-700 mb-1">
+                          {['👍', '❤️', '😂', '😮', '😢', '🔥'].map(emoji => (
+                            <button 
+                              key={emoji} 
+                              onClick={(e) => { e.stopPropagation(); toggleReaction(msg.id, emoji); setActiveMenuId(null); }}
+                              className="hover:scale-125 transition-transform"
+                            >
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                        <button  
                           onClick={(e) => {
                             e.stopPropagation();
                             setIsSelectionMode(true);
@@ -694,6 +772,29 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
                           className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5 transition"
                         >
                           Select
+                        </button>
+                        {isMine && !msg.deleted_by && (
+                          <button 
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingMessage(msg);
+                              setText(msg.content);
+                              setActiveMenuId(null);
+                            }}
+                            className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5 transition"
+                          >
+                            Edit
+                          </button>
+                        )}
+                        <button 
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setReplyingToMessage(msg);
+                            setActiveMenuId(null);
+                          }}
+                          className="w-full text-left px-4 py-2 text-sm text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-white/5 transition"
+                        >
+                          Reply
                         </button>
                       </div>
                     )}
@@ -740,6 +841,32 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
             </div>
           </div>
         )}
+        
+        {editingMessage && (
+          <div className="flex items-center justify-between bg-blue-50/50 dark:bg-blue-900/20 px-4 py-2 text-sm text-blue-700 dark:text-blue-300 rounded-t-xl mx-2 border-b border-blue-200 dark:border-blue-800">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-8 bg-blue-500 rounded-full"></div>
+              <div>
+                <p className="font-semibold text-[#0078d4]">Edit Message</p>
+                <p className="truncate opacity-80 max-w-[200px]">{editingMessage.content}</p>
+              </div>
+            </div>
+            <button onClick={() => { setEditingMessage(null); setText('') }} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded-full"><Square className="w-4 h-4"/></button>
+          </div>
+        )}
+        {replyingToMessage && !editingMessage && (
+          <div className="flex items-center justify-between bg-gray-50/50 dark:bg-white/5 px-4 py-2 text-sm text-gray-700 dark:text-gray-300 rounded-t-xl mx-2 border-b border-gray-200 dark:border-gray-800">
+            <div className="flex items-center gap-2">
+              <div className="w-1 h-8 bg-[#0078d4] rounded-full"></div>
+              <div>
+                <p className="font-semibold text-[#0078d4]">Reply to {replyingToMessage.sender?.username || 'User'}</p>
+                <p className="truncate opacity-80 max-w-[200px]">{replyingToMessage.content}</p>
+              </div>
+            </div>
+            <button onClick={() => setReplyingToMessage(null)} className="p-1 hover:bg-black/5 dark:hover:bg-white/10 rounded-full"><Square className="w-4 h-4"/></button>
+          </div>
+        )}
+
         <div className="flex items-end gap-2 bg-[#f3f2f1] dark:bg-[#201f1e] p-2 rounded-xl border border-transparent focus-within:border-[#0078d4] focus-within:bg-white dark:focus-within:bg-[#323130] transition">
           <input 
             type="file" 

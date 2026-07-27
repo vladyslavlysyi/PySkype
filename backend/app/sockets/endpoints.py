@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from ..database import AsyncSessionLocal
-from ..models import User, Message, UserStatus, ConversationParticipant
+from ..models import User, Message, UserStatus, ConversationParticipant, MessageReaction
 from ..auth import decode_access_token
 from .manager import manager
 
@@ -100,6 +100,8 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                     # Validate user is in conversation
                     conversation_id = payload.get("conversation_id")
                     content = payload.get("content")
+                    reply_to_message_id = payload.get("reply_to_message_id")
+                    
                     async with AsyncSessionLocal() as session:
                         # Verify participant
                         part_result = await session.execute(
@@ -112,7 +114,12 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                             continue
 
                         # Save to DB
-                        new_msg = Message(conversation_id=conversation_id, sender_id=user_id, content=content)
+                        new_msg = Message(
+                            conversation_id=conversation_id, 
+                            sender_id=user_id, 
+                            content=content,
+                            reply_to_message_id=reply_to_message_id
+                        )
                         session.add(new_msg)
                         await session.commit()
                         await session.refresh(new_msg)
@@ -121,7 +128,11 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                         result = await session.execute(
                             select(Message)
                             .where(Message.id == new_msg.id)
-                            .options(selectinload(Message.sender))
+                            .options(
+                                selectinload(Message.sender),
+                                selectinload(Message.reply_to_message),
+                                selectinload(Message.reactions).selectinload(MessageReaction.user)
+                            )
                         )
                         loaded_msg = result.scalars().first()
                         
@@ -133,19 +144,8 @@ async def websocket_endpoint(websocket: WebSocket, token: str = None):
                         )
                         partners = part_result.scalars().all()
                         
-                        msg_payload = {
-                            "id": loaded_msg.id,
-                            "conversation_id": loaded_msg.conversation_id,
-                            "sender_id": loaded_msg.sender_id,
-                            "content": loaded_msg.content,
-                            "is_read": loaded_msg.is_read if hasattr(loaded_msg, 'is_read') else False,
-                            "created_at": loaded_msg.created_at.isoformat(),
-                            "sender": {
-                                "id": loaded_msg.sender.id,
-                                "username": loaded_msg.sender.username,
-                                "avatar_url": loaded_msg.sender.avatar_url
-                            }
-                        }
+                        from ..schemas import MessageResponse
+                        msg_payload = MessageResponse.model_validate(loaded_msg).model_dump(mode='json')
 
                     # Send to target participants and back to self
                     for p in partners:

@@ -13,6 +13,20 @@ export interface User {
   status: 'ONLINE' | 'AWAY' | 'DO_NOT_DISTURB' | 'OFFLINE'
 }
 
+export interface MessageReaction {
+  emoji: string
+  user_id: string
+  created_at: string
+  user: User
+}
+
+export interface MessagePreview {
+  id: string
+  sender_id: string
+  content: string | null
+  is_deleted: boolean
+}
+
 export interface Message {
   id: string
   content: string
@@ -20,6 +34,12 @@ export interface Message {
   conversation_id?: string
   is_read?: boolean
   created_at: string
+  is_edited?: boolean
+  edited_at?: string
+  deleted_by?: string
+  reply_to_message_id?: string
+  reply_to_message?: MessagePreview
+  reactions?: MessageReaction[]
   sender?: User
 }
 
