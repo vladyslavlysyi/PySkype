@@ -423,18 +423,21 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
               >
                 <span className="text-[10px] text-gray-500 font-medium">Clear</span>
               </button>
-              {predefinedBackgrounds.map((bg, idx) => (
-                <button
-                  key={idx}
-                  onClick={() => changeChatBackground(bg)}
-                  className="aspect-[3/4] rounded-lg border-2 border-transparent hover:scale-105 transition-all overflow-hidden"
-                  style={{ 
-                    backgroundImage: bg.startsWith('http') || bg.startsWith('/') || bg.startsWith('data:') ? `url(${bg})` : bg,
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center'
-                  }}
-                />
-              ))}
+              {predefinedBackgrounds.map((bg, idx) => {
+                const isUrl = bg.startsWith('http') || bg.startsWith('/') || bg.startsWith('data:')
+                return (
+                  <button
+                    key={idx}
+                    onClick={() => changeChatBackground(bg)}
+                    className="aspect-[3/4] rounded-lg border-2 border-transparent hover:scale-105 transition-all overflow-hidden"
+                    style={{ 
+                      backgroundImage: isUrl ? `url(${bg})` : bg,
+                      backgroundSize: 'cover',
+                      backgroundPosition: 'center'
+                    }}
+                  />
+                )
+              })}
             </div>
             
             <label className="w-full flex items-center justify-center gap-2 py-3 bg-[#0078d4] hover:bg-[#005a9e] text-white rounded-xl cursor-pointer transition font-medium">
@@ -480,7 +483,11 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
         ref={scrollRef} 
         className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar chat-bg"
         style={{
-          backgroundImage: myPart?.chat_bg || currentUser?.global_chat_bg ? `url(${myPart?.chat_bg || currentUser?.global_chat_bg})` : undefined,
+          backgroundImage: (() => {
+            const bg = myPart?.chat_bg || currentUser?.global_chat_bg
+            if (!bg) return undefined
+            return bg.startsWith('http') || bg.startsWith('/') || bg.startsWith('data:') ? `url(${bg})` : bg
+          })(),
           backgroundSize: 'cover',
           backgroundPosition: 'center',
           backgroundAttachment: 'fixed'

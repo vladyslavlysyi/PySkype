@@ -79,9 +79,13 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
         setFormData({ ...formData, avatarUrl: data.url })
         setIsCropping(false)
         setImageSrc(null)
+      } else {
+        const errText = await res.text()
+        alert("Upload failed: " + errText)
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err)
+      alert("Error: " + err.message)
     } finally {
       setIsLoading(false)
     }
