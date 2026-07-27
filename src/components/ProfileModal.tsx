@@ -64,9 +64,8 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
     setIsLoading(true)
     try {
       const croppedImageBlob = await getCroppedImg(imageSrc, croppedAreaPixels, 0)
-      const file = new File([croppedImageBlob], "avatar.jpg", { type: "image/jpeg" })
       const fd = new FormData()
-      fd.append("file", file)
+      fd.append("file", croppedImageBlob, "avatar.jpg")
       
       const res = await fetch("/api/upload", {
         method: "POST",
