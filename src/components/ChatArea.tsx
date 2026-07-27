@@ -615,13 +615,13 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
                 <div className="relative opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
                   <button 
                     onClick={() => setActiveMenuId(activeMenuId === msg.id ? null : msg.id)}
-                    className="p-1.5 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 rounded-full hover:bg-black/5 dark:hover:bg-white/5"
+                    className="p-1.5 text-gray-700 dark:text-gray-200 bg-white/80 dark:bg-black/60 hover:bg-white dark:hover:bg-black backdrop-blur-sm shadow-sm rounded-full border border-gray-200/50 dark:border-gray-700/50"
                   >
                     <MoreHorizontal className="w-5 h-5" />
                   </button>
                   
                   {activeMenuId === msg.id && (
-                    <div className="absolute top-full right-0 mt-1 w-48 bg-white dark:bg-[#2d2c2c] rounded-xl shadow-xl border border-gray-200 dark:border-gray-700 py-1 z-50">
+                    <div className="absolute bottom-full mb-2 right-0 w-48 bg-white dark:bg-[#2d2c2c] rounded-xl shadow-[0_0_15px_rgba(0,0,0,0.1)] dark:shadow-[0_0_15px_rgba(0,0,0,0.3)] border border-gray-200 dark:border-gray-700 py-1 z-[100]">
                       <button 
                         onClick={() => handleDeleteMessage(msg.id, false)}
                         className="w-full text-left px-4 py-2 text-sm text-red-600 dark:text-red-400 hover:bg-gray-100 dark:hover:bg-white/5 transition"
