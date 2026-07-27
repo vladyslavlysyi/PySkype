@@ -5,7 +5,7 @@ from sqlalchemy.future import select
 from sqlalchemy.orm import selectinload
 from sqlalchemy import func
 from ..database import get_db
-from ..models import User, Conversation, ConversationParticipant, Message
+from ..models import User, Conversation, ConversationParticipant, Message, MessageReaction
 from ..schemas import ConversationResponse, MessageResponse, CreateChatRequest, ChatResponse
 from .deps import get_current_user
 
