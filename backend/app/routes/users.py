@@ -49,6 +49,11 @@ async def get_conversations(db: AsyncSession = Depends(get_db), current_user: Us
             select(Message)
             .where(Message.conversation_id == conv.id)
             .order_by(Message.created_at.desc())
+            .options(
+                selectinload(Message.sender),
+                selectinload(Message.reply_to_message),
+                selectinload(Message.reactions).selectinload(MessageReaction.user)
+            )
             .limit(1)
         )
         last_msg = msg_result.scalars().first()

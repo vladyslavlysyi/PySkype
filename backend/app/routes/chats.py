@@ -73,7 +73,11 @@ async def get_messages(conversation_id: str, db: AsyncSession = Depends(get_db),
         select(Message)
         .where(Message.conversation_id == conversation_id)
         .order_by(Message.created_at.desc())
-        .options(selectinload(Message.sender))
+        .options(
+            selectinload(Message.sender),
+            selectinload(Message.reply_to_message),
+            selectinload(Message.reactions).selectinload(MessageReaction.user)
+        )
     )
     messages = result.scalars().all()
     # Filter out messages deleted by this user
