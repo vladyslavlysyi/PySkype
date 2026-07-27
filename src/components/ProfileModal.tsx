@@ -209,57 +209,62 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
       {/* Modal */}
       <div className="relative bg-white dark:bg-[#201f1e] w-full max-w-[400px] h-[90vh] md:h-auto md:max-h-[85vh] rounded-2xl shadow-2xl overflow-hidden transform transition-all flex flex-col">
         
-        {/* Header Background */}
-        <div 
-          className="h-28 w-full relative flex-shrink-0 transition-all duration-300"
-          style={{ background: (isEditing ? formData.theme_color : user.theme_color) || 'linear-gradient(to right, #0078d4, #00bcf2)' }}
-        >
-          <button 
-            onClick={onClose}
-            className="absolute top-4 right-4 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md transition-colors"
-          >
-            <X className="w-5 h-5" />
-          </button>
+        {/* Sticky Header Buttons */}
+        <div className="absolute top-4 right-4 z-20 flex gap-2">
           {isMe && !isEditing && (
             <button 
               onClick={() => setIsEditing(true)}
-              className="absolute top-4 right-14 p-2 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md transition-colors flex items-center gap-2 px-4"
+              className="p-2 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md transition-colors flex items-center gap-2 px-4"
             >
               <Edit2 className="w-4 h-4" />
               <span className="text-sm font-medium">Edit</span>
             </button>
           )}
-        </div>
-
-        {/* Avatar (Outside scroll container to prevent clipping) */}
-        <div className="absolute top-[64px] left-1/2 -translate-x-1/2 z-10 flex flex-col items-center">
-          <div className="relative inline-block group">
-            <div className="relative overflow-hidden rounded-full w-24 h-24 border-4 border-white dark:border-[#201f1e] bg-gray-100 dark:bg-gray-800 flex items-center justify-center">
-              {(isEditing ? formData.avatarUrl : user.avatar_url) ? (
-                <img 
-                  src={(isEditing ? formData.avatarUrl : user.avatar_url) || undefined} 
-                  alt="avatar" 
-                  className="w-full h-full object-cover bg-white dark:bg-gray-800" 
-                />
-              ) : (
-                <UserCircle className="w-16 h-16 text-gray-400" />
-              )}
-              {isEditing && (
-                <div 
-                  onClick={() => fileInputRef.current?.click()}
-                  className="absolute inset-0 bg-black/40 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
-                >
-                  <Edit2 className="w-6 h-6 text-white" />
-                </div>
-              )}
-            </div>
-            {!isEditing && <div className={`absolute bottom-1 right-1 w-5 h-5 rounded-full border-2 border-white dark:border-[#201f1e] bg-current ${getStatusColor(user.status)}`} />}
-            <input type="file" ref={fileInputRef} onChange={handleAvatarUpload} className="hidden" accept="image/*" />
-          </div>
+          <button 
+            onClick={onClose}
+            className="p-2 bg-black/20 hover:bg-black/40 text-white rounded-full backdrop-blur-md transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
         </div>
 
         {/* Scrollable Content */}
-        <div className="pt-20 overflow-y-auto custom-scrollbar flex-1 flex flex-col">
+        <div className="overflow-y-auto custom-scrollbar flex-1 flex flex-col relative">
+          
+          {/* Header Background (Scrolls with content) */}
+          <div 
+            className="h-32 w-full flex-shrink-0 transition-all duration-300"
+            style={{ background: (isEditing ? formData.theme_color : user.theme_color) || 'linear-gradient(to right, #0078d4, #00bcf2)' }}
+          />
+
+          {/* Avatar (Scrolls with content) */}
+          <div className="absolute top-[64px] left-1/2 -translate-x-1/2 z-10 flex flex-col items-center">
+            <div className="relative inline-block group">
+              <div className="relative overflow-hidden rounded-full w-24 h-24 border-4 border-white dark:bg-[#201f1e] dark:border-[#201f1e] bg-gray-100 flex items-center justify-center">
+                {(isEditing ? formData.avatarUrl : user.avatar_url) ? (
+                  <img 
+                    src={(isEditing ? formData.avatarUrl : user.avatar_url) || undefined} 
+                    alt="avatar" 
+                    className="w-full h-full object-cover bg-white dark:bg-[#201f1e]" 
+                  />
+                ) : (
+                  <UserCircle className="w-16 h-16 text-gray-400" />
+                )}
+                {isEditing && (
+                  <div 
+                    onClick={() => fileInputRef.current?.click()}
+                    className="absolute inset-0 bg-black/40 flex items-center justify-center cursor-pointer opacity-0 group-hover:opacity-100 transition-opacity"
+                  >
+                    <Edit2 className="w-6 h-6 text-white" />
+                  </div>
+                )}
+              </div>
+              {!isEditing && <div className={`absolute bottom-1 right-1 w-5 h-5 rounded-full border-2 border-white dark:border-[#201f1e] bg-current ${getStatusColor(user.status)}`} />}
+              <input type="file" ref={fileInputRef} onChange={handleAvatarUpload} className="hidden" accept="image/*" />
+            </div>
+          </div>
+
+          <div className="pt-16 flex-1 flex flex-col bg-white dark:bg-[#201f1e]">
           {!isEditing ? (
             <>
               {/* Profile Details */}
@@ -270,6 +275,7 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
                 <span className="text-sm font-medium text-gray-500 dark:text-gray-400 mt-1">
                   {getStatusText(user.status)}
                 </span>
+
 
                 {/* Quick Actions */}
                 {!isMe && (
@@ -456,16 +462,15 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
               </div>
             </>
           ) : (
-            <div className="p-0 flex flex-col h-full bg-[#f3f2f1] dark:bg-[#11100f]">
-              <div className="p-6 flex-shrink-0 bg-white dark:bg-[#201f1e] border-b border-gray-100 dark:border-gray-800 shadow-sm relative">
+            <>
+              <div className="p-6 flex flex-col gap-6">
+              <div className="text-center pb-2 border-b border-gray-100 dark:border-gray-800">
                 <h2 className="text-xl font-bold text-gray-900 dark:text-white">Edit Profile</h2>
                 <p className="text-xs text-gray-500 mt-1">Update your personal details</p>
               </div>
 
-              <div className="flex-1 overflow-y-auto p-6 space-y-6">
-                {/* Inputs block */}
-                {/* Inputs block */}
-                <div className="bg-white dark:bg-[#201f1e] rounded-2xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-800 space-y-1">
+              {/* Inputs block */}
+              <div className="bg-white dark:bg-[#201f1e] rounded-2xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-800 space-y-1">
                   {/* Username */}
                   <div className="group flex items-center gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 focus-within:bg-gray-50 dark:focus-within:bg-[#323130] transition-colors">
                     <UserIcon className="w-6 h-6 text-gray-400 group-focus-within:text-[#0078d4] transition-colors flex-shrink-0" />
@@ -639,7 +644,7 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
                 </div>
               </div>
               
-              <div className="p-4 bg-white dark:bg-[#201f1e] border-t border-gray-100 dark:border-gray-800 flex gap-3 flex-shrink-0">
+              <div className="flex gap-3 mt-4">
                 <button 
                   onClick={() => setIsEditing(false)}
                   className="flex-1 py-3 rounded-xl font-medium text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-[#323130] transition"
@@ -660,8 +665,9 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
                   )}
                 </button>
               </div>
-            </div>
+            </>
           )}
+          </div>
         </div>
 
         {isCropping && imageSrc && (
