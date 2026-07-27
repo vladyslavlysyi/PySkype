@@ -6,6 +6,7 @@ import { useAppStore, Message } from '@/store/useAppStore'
 import { useWebSocket } from '@/contexts/WebSocketContext'
 import { ProfileModal } from './ProfileModal'
 import EmojiPicker from 'emoji-picker-react'
+import { VoiceMessagePlayer } from './VoiceMessagePlayer'
 
 interface ChatAreaProps {
   onStartCall: (video: boolean) => void
