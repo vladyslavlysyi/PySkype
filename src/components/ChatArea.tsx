@@ -146,6 +146,14 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
               <VoiceMessagePlayer src={linkMatch[2]} />
             </div>
           )
+        } else if (linkMatch[1] === '⭕ Video Message' || linkMatch[1] === '🎥 Video Message') {
+          return (
+            <div key={idx} className="my-1">
+              <div className="w-48 h-48 sm:w-56 sm:h-56 rounded-full overflow-hidden border-4 border-transparent hover:border-[#0078d4]/50 transition-colors shadow-md bg-black">
+                <video src={linkMatch[2]} className="w-full h-full object-cover" autoPlay loop muted playsInline />
+              </div>
+            </div>
+          )
         }
         return (
           <a key={idx} href={linkMatch[2]} target="_blank" rel="noopener noreferrer" className="underline text-current opacity-90 hover:opacity-100 break-all block my-1 flex items-center gap-1">

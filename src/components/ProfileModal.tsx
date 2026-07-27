@@ -22,7 +22,7 @@ interface Message {
 export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onStartCall }: ProfileModalProps) => {
   const { setCurrentUser } = useAppStore()
   const [isEditing, setIsEditing] = useState(false)
-  const [activeTab, setActiveTab] = useState<'info' | 'media' | 'files' | 'links' | 'voice'>('info')
+  const [activeTab, setActiveTab] = useState<'info' | 'media' | 'files' | 'links' | 'voice' | 'video'>('info')
   const [messages, setMessages] = useState<Message[]>([])
   
   const [formData, setFormData] = useState({
@@ -167,6 +167,7 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
   const fileList: { url: string, name: string }[] = []
   const linkList: { url: string, name: string }[] = []
   const voiceList: { url: string, date?: string }[] = []
+  const videoMessageList: { url: string }[] = []
 
   messages.forEach(msg => {
     const lines = msg.content.split('\n')
@@ -181,6 +182,8 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
       if (linkMatch) {
         if (linkMatch[1] === '🎤 Voice Message') {
           voiceList.push({ url: linkMatch[2] })
+        } else if (linkMatch[1] === '⭕ Video Message' || linkMatch[1] === '🎥 Video Message') {
+          videoMessageList.push({ url: linkMatch[2] })
         } else if (linkMatch[1].startsWith('📎 ')) {
           fileList.push({ name: linkMatch[1].replace('📎 ', ''), url: linkMatch[2] })
         } else {
@@ -336,6 +339,12 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
                     >
                       Voice {voiceList.length > 0 && <span className="bg-gray-100 dark:bg-gray-800 text-xs px-1.5 py-0.5 rounded-md text-gray-500">{voiceList.length}</span>}
                     </button>
+                    <button 
+                      onClick={() => setActiveTab('video')}
+                      className={`flex-1 py-3 text-sm font-semibold transition-colors border-b-2 flex items-center justify-center gap-1 ${activeTab === 'video' ? 'border-[#0078d4] text-[#0078d4]' : 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}`}
+                    >
+                      Circles {videoMessageList.length > 0 && <span className="bg-gray-100 dark:bg-gray-800 text-xs px-1.5 py-0.5 rounded-md text-gray-500">{videoMessageList.length}</span>}
+                    </button>
                   </>
                 )}
               </div>
@@ -455,6 +464,26 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
                       <div className="flex flex-col items-center justify-center text-gray-500 py-10">
                         <Mic className="w-12 h-12 mb-3 opacity-20" />
                         <p className="text-sm">No voice messages yet</p>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {activeTab === 'video' && (
+                  <div className="space-y-4">
+                    {videoMessageList.length > 0 ? (
+                      <div className="grid grid-cols-3 gap-3">
+                        {videoMessageList.map((v, i) => (
+                          <div key={i} className="aspect-square rounded-full overflow-hidden border-2 border-[#0078d4]/30 bg-black group relative cursor-pointer hover:border-[#0078d4] transition-colors">
+                            <video src={v.url} className="w-full h-full object-cover" autoPlay loop muted playsInline />
+                            <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors" />
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <div className="flex flex-col items-center justify-center text-gray-500 py-10">
+                        <Video className="w-12 h-12 mb-3 opacity-20" />
+                        <p className="text-sm">No video messages yet</p>
                       </div>
                     )}
                   </div>
