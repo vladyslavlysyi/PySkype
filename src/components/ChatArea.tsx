@@ -140,7 +140,7 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
         if (linkMatch[1] === '🎤 Voice Message') {
           return (
             <div key={idx} className="my-1">
-              <audio controls src={linkMatch[2]} className="max-w-[200px] sm:max-w-[250px] h-10 outline-none" />
+              <VoiceMessagePlayer src={linkMatch[2]} />
             </div>
           )
         }
