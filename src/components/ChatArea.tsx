@@ -660,7 +660,7 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
 
                 {/* Message Actions Menu */}
                 {!isSelectionMode && (
-                  <div className="relative opacity-0 group-hover:opacity-100 transition-opacity flex items-center">
+                  <div className="relative opacity-0 group-hover:opacity-100 transition-opacity flex items-center self-end pb-2">
                     <button 
                       onClick={(e) => {
                         e.stopPropagation();
