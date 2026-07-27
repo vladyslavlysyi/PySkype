@@ -46,4 +46,9 @@ class ConnectionManager:
         participant_ids = [row[0] for row in part_res.all()]
         await self.broadcast_to_users(participant_ids, message)
 
+    async def broadcast(self, message: dict):
+        """Broadcasts a message to all connected users."""
+        for user_id in self.active_connections:
+            await self.send_personal_message(message, user_id)
+
 manager = ConnectionManager()

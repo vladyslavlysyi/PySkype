@@ -114,6 +114,31 @@ async def startup():
     except Exception:
         pass
 
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("ALTER TABLE messages ADD COLUMN is_edited BOOLEAN DEFAULT FALSE;"))
+    except Exception:
+        pass
+
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("ALTER TABLE messages ADD COLUMN edited_at TIMESTAMP WITH TIME ZONE;"))
+    except Exception:
+        pass
+
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("ALTER TABLE messages ADD COLUMN reply_to_message_id VARCHAR REFERENCES messages(id) ON DELETE SET NULL;"))
+    except Exception:
+        pass
+
+    try:
+        async with engine.begin() as conn:
+            # Postgres specific: add GROUP to enum if not exists
+            await conn.execute(text("ALTER TYPE conversationtype ADD VALUE IF NOT EXISTS 'GROUP';"))
+    except Exception:
+        pass
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
