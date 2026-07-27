@@ -629,7 +629,7 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
           return (
             <div 
               key={msg.id} 
-              className={`flex items-center gap-3 w-full ${isMine ? 'justify-end' : 'justify-start'} ${isSelectionMode ? 'cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 p-2 rounded-xl transition-colors' : ''}`}
+              className={`flex items-center gap-3 w-full ${isMine ? 'justify-end' : 'justify-start'} ${isSelectionMode ? 'cursor-pointer hover:bg-black/5 dark:hover:bg-white/5 -mx-2 px-2 rounded-xl transition-colors' : ''}`}
               onClick={() => {
                 if (isSelectionMode) toggleSelection(msg.id)
               }}
