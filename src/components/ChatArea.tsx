@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useEffect, useState, useRef } from 'react'
-import { Phone, Video, MoreHorizontal, Send, Smile, Paperclip, UserCircle, ArrowLeft, Mic, Check, CheckCheck, Square } from 'lucide-react'
+import { Phone, Video as VideoIcon, MoreHorizontal, Send, Smile, Paperclip, UserCircle, ArrowLeft, Mic, Check, CheckCheck, Square, Camera } from 'lucide-react'
 import { useAppStore, Message } from '@/store/useAppStore'
 import { useWebSocket } from '@/contexts/WebSocketContext'
 import { ProfileModal } from './ProfileModal'
@@ -23,6 +23,8 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [showEmoji, setShowEmoji] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
+  const [isRecordingVideo, setIsRecordingVideo] = useState(false)
+  const videoPreviewRef = useRef<HTMLVideoElement>(null)
   const [isBgPickerOpen, setIsBgPickerOpen] = useState(false)
   const [isUploadingBg, setIsUploadingBg] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -120,10 +122,77 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
     }
   }
 
+  const startVideoRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      const recorder = new MediaRecorder(stream)
+      mediaRecorderRef.current = recorder
+      audioChunksRef.current = []
+      
+      if (videoPreviewRef.current) {
+        videoPreviewRef.current.srcObject = stream
+      }
+
+      recorder.ondataavailable = e => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data)
+      }
+
+      recorder.onstop = async () => {
+        const videoBlob = new Blob(audioChunksRef.current, { type: 'video/webm' })
+        const file = new File([videoBlob], 'video_message.webm', { type: 'video/webm' })
+        
+        const formData = new FormData()
+        formData.append("file", file)
+        try {
+          const res = await fetch("/api/upload", {
+            method: "POST",
+            headers: { "Authorization": `Bearer ${localStorage.getItem('token')}` },
+            body: formData
+          })
+          if (!res.ok) throw new Error("Upload failed")
+          const data = await res.json()
+          
+          if (activeConversation && isConnected && currentUser) {
+            const receiverIds = activeConversation.participants
+              .filter(p => p.user.id !== currentUser.id)
+              .map(p => p.user.id)
+            const targetUserId = receiverIds.length > 0 ? receiverIds[0] : undefined
+
+            sendMessage('send_message', {
+              conversation_id: activeConversation.id,
+              content: `[⭕ Video Message](${data.url})`
+            }, targetUserId)
+          }
+        } catch (err) {
+          alert("Failed to upload video message.")
+        }
+        
+        // Stop tracks
+        stream.getTracks().forEach(track => track.stop())
+        if (videoPreviewRef.current) {
+          videoPreviewRef.current.srcObject = null
+        }
+      }
+
+      recorder.start()
+      setIsRecordingVideo(true)
+    } catch (err) {
+      console.error("Error accessing camera/microphone", err)
+      alert("Could not access camera/microphone.")
+    }
+  }
+
   const stopRecording = () => {
     if (mediaRecorderRef.current && isRecording) {
       mediaRecorderRef.current.stop()
       setIsRecording(false)
+    }
+  }
+
+  const stopVideoRecording = () => {
+    if (mediaRecorderRef.current && isRecordingVideo) {
+      mediaRecorderRef.current.stop()
+      setIsRecordingVideo(false)
     }
   }
 
@@ -370,12 +439,12 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
           </div>
         </div>
         <div className="flex items-center gap-2 relative">
-          <button onClick={() => onStartCall(false)} className="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition text-[#0078d4] hover:text-[#005a9e]">
-            <Phone className="w-5 h-5 fill-current" />
-          </button>
-          <button onClick={() => onStartCall(true)} className="p-2.5 rounded-full hover:bg-gray-100 dark:hover:bg-gray-800 transition text-[#0078d4] hover:text-[#005a9e]">
-            <Video className="w-5 h-5 fill-current" />
-          </button>
+              <button onClick={() => { if (onStartCall) onStartCall(false) }} className="p-2 text-gray-500 hover:text-[#0078d4] hover:bg-gray-100 dark:hover:bg-[#323130] rounded-full transition">
+                <Phone className="w-5 h-5" />
+              </button>
+              <button onClick={() => { if (onStartCall) onStartCall(true) }} className="p-2 text-gray-500 hover:text-[#0078d4] hover:bg-gray-100 dark:hover:bg-[#323130] rounded-full transition">
+                <VideoIcon className="w-5 h-5" />
+              </button>
           <div className="relative">
             <button 
               onClick={() => setIsMenuOpen(!isMenuOpen)}
@@ -564,16 +633,32 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
           <button onClick={() => setShowEmoji(!showEmoji)} className="p-2 text-gray-500 hover:text-[#0078d4] transition">
             <Smile className="w-5 h-5" />
           </button>
-          <button 
-            onClick={isRecording ? stopRecording : startRecording}
-            className={`p-2 transition rounded-full ${isRecording ? 'text-red-500 bg-red-50 dark:bg-red-900/30 animate-pulse' : 'text-gray-500 hover:text-[#0078d4]'}`}
-          >
-            {isRecording ? <Square className="w-5 h-5 fill-current" /> : <Mic className="w-5 h-5" />}
-          </button>
+          {!isRecordingVideo && (
+            <button 
+              onClick={isRecording ? stopRecording : startRecording}
+              className={`p-2 transition rounded-full ${isRecording ? 'text-red-500 bg-red-50 dark:bg-red-900/30 animate-pulse' : 'text-gray-500 hover:text-[#0078d4]'}`}
+            >
+              {isRecording ? <Square className="w-5 h-5 fill-current" /> : <Mic className="w-5 h-5" />}
+            </button>
+          )}
+          {!isRecording && (
+            <button 
+              onClick={isRecordingVideo ? stopVideoRecording : startVideoRecording}
+              className={`p-2 transition rounded-full ${isRecordingVideo ? 'text-red-500 bg-red-50 dark:bg-red-900/30 animate-pulse' : 'text-gray-500 hover:text-[#0078d4]'}`}
+            >
+              {isRecordingVideo ? <Square className="w-5 h-5 fill-current" /> : <Camera className="w-5 h-5" />}
+            </button>
+          )}
           
+          {isRecordingVideo && (
+            <div className="absolute bottom-20 right-4 w-32 h-32 rounded-full overflow-hidden border-4 border-red-500 shadow-xl bg-black z-50">
+              <video ref={videoPreviewRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+            </div>
+          )}
+
           <button 
             onClick={sendMessageToSocket}
-            disabled={!text.trim() && !isRecording} 
+            disabled={!text.trim() && !isRecording && !isRecordingVideo} 
             className="p-2 text-[#0078d4] disabled:text-gray-400 disabled:bg-transparent hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-full transition"
           >
             <Send className="w-5 h-5" />
