@@ -24,7 +24,7 @@ async def search_users(q: str, db: AsyncSession = Depends(get_db), current_user:
     return users
 
 from sqlalchemy.orm import selectinload
-from ..models import Conversation, ConversationParticipant, Message
+from ..models import Conversation, ConversationParticipant, Message, MessageReaction
 from ..schemas import ConversationResponse
 
 @router.get("/conversations", response_model=List[ConversationResponse])
