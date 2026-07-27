@@ -24,6 +24,7 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
   const [showEmoji, setShowEmoji] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
   const [isRecordingVideo, setIsRecordingVideo] = useState(false)
+  const [videoStream, setVideoStream] = useState<MediaStream | null>(null)
   const videoPreviewRef = useRef<HTMLVideoElement>(null)
   const [isBgPickerOpen, setIsBgPickerOpen] = useState(false)
   const [isUploadingBg, setIsUploadingBg] = useState(false)
@@ -124,14 +125,15 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
 
   const startVideoRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true })
+      const stream = await navigator.mediaDevices.getUserMedia({ 
+        video: { width: { ideal: 480 }, height: { ideal: 480 } }, 
+        audio: true 
+      })
       const recorder = new MediaRecorder(stream)
       mediaRecorderRef.current = recorder
       audioChunksRef.current = []
       
-      if (videoPreviewRef.current) {
-        videoPreviewRef.current.srcObject = stream
-      }
+      setVideoStream(stream)
 
       recorder.ondataavailable = e => {
         if (e.data.size > 0) audioChunksRef.current.push(e.data)
@@ -149,7 +151,11 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
             headers: { "Authorization": `Bearer ${localStorage.getItem('token')}` },
             body: formData
           })
-          if (!res.ok) throw new Error("Upload failed")
+          if (!res.ok) {
+            const errText = await res.text()
+            console.error("Upload failed with response:", errText)
+            throw new Error("Upload failed: " + errText)
+          }
           const data = await res.json()
           
           if (activeConversation && isConnected && currentUser) {
@@ -163,15 +169,14 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
               content: `[⭕ Video Message](${data.url})`
             }, targetUserId)
           }
-        } catch (err) {
-          alert("Failed to upload video message.")
+        } catch (err: any) {
+          console.error(err)
+          alert("Failed to upload video message. " + (err.message || ""))
         }
         
         // Stop tracks
         stream.getTracks().forEach(track => track.stop())
-        if (videoPreviewRef.current) {
-          videoPreviewRef.current.srcObject = null
-        }
+        setVideoStream(null)
       }
 
       recorder.start()
@@ -650,9 +655,13 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
             </button>
           )}
           
-          {isRecordingVideo && (
+          {isRecordingVideo && videoStream && (
             <div className="absolute bottom-20 right-4 w-32 h-32 rounded-full overflow-hidden border-4 border-red-500 shadow-xl bg-black z-50">
-              <video ref={videoPreviewRef} className="w-full h-full object-cover" autoPlay muted playsInline />
+              <video 
+                ref={el => { if (el && el.srcObject !== videoStream) el.srcObject = videoStream }} 
+                className="w-full h-full object-cover" 
+                autoPlay muted playsInline 
+              />
             </div>
           )}
 
