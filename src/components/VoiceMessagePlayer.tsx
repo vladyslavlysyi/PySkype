@@ -13,6 +13,13 @@ export const VoiceMessagePlayer = ({ src }: VoiceMessagePlayerProps) => {
   const [progress, setProgress] = useState(0)
   const [currentTime, setCurrentTime] = useState('0:00')
   const [duration, setDuration] = useState('0:00')
+  const [playbackRate, setPlaybackRate] = useState(1)
+
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.playbackRate = playbackRate
+    }
+  }, [playbackRate])
 
   const formatTime = (time: number) => {
     if (isNaN(time) || !isFinite(time)) return '0:00'
@@ -76,6 +83,10 @@ export const VoiceMessagePlayer = ({ src }: VoiceMessagePlayerProps) => {
     }
   }
 
+  const toggleSpeed = () => {
+    setPlaybackRate(prev => prev === 1 ? 1.5 : prev === 1.5 ? 2 : 1)
+  }
+
   return (
     <div className="flex items-center gap-3 w-48 sm:w-60 h-10 select-none">
       <audio
@@ -117,7 +128,15 @@ export const VoiceMessagePlayer = ({ src }: VoiceMessagePlayerProps) => {
         </div>
         <div className="flex justify-between items-center text-[10px] text-white/80 font-medium">
           <span>{currentTime}</span>
-          <span>{duration}</span>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={toggleSpeed}
+              className="bg-white/20 hover:bg-white/30 text-white rounded px-1.5 py-0.5 transition-colors"
+            >
+              {playbackRate}x
+            </button>
+            <span>{duration}</span>
+          </div>
         </div>
       </div>
     </div>
