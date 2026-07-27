@@ -141,6 +141,10 @@ async def startup():
 
 import traceback
 from sqlalchemy.orm import selectinload
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.future import select
+from fastapi import Depends
+from .database import get_db
 from .models import Message, MessageReaction
 
 @app.get("/api/debug_messages")
