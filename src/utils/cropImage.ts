@@ -24,31 +24,19 @@ export default async function getCroppedImg(
     throw new Error('No 2d context')
   }
 
-  const maxSize = Math.max(image.width, image.height)
-  const safeArea = 2 * ((maxSize / 2) * Math.sqrt(2))
-
-  canvas.width = safeArea
-  canvas.height = safeArea
-
-  ctx.translate(safeArea / 2, safeArea / 2)
-  ctx.rotate(getRadianAngle(rotation))
-  ctx.translate(-safeArea / 2, -safeArea / 2)
-
-  ctx.drawImage(
-    image,
-    safeArea / 2 - image.width / 2,
-    safeArea / 2 - image.height / 2
-  )
-
-  const data = ctx.getImageData(0, 0, safeArea, safeArea)
-
   canvas.width = pixelCrop.width
   canvas.height = pixelCrop.height
 
-  ctx.putImageData(
-    data,
-    Math.round(0 - safeArea / 2 + image.width / 2 - pixelCrop.x),
-    Math.round(0 - safeArea / 2 + image.height / 2 - pixelCrop.y)
+  ctx.drawImage(
+    image,
+    pixelCrop.x,
+    pixelCrop.y,
+    pixelCrop.width,
+    pixelCrop.height,
+    0,
+    0,
+    pixelCrop.width,
+    pixelCrop.height
   )
 
   return new Promise((resolve, reject) => {

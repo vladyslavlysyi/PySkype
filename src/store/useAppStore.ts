@@ -9,6 +9,7 @@ export interface User {
   phone_number?: string
   birthday?: string
   theme_color?: string
+  global_chat_bg?: string | null
   status: 'ONLINE' | 'AWAY' | 'DO_NOT_DISTURB' | 'OFFLINE'
 }
 
@@ -25,7 +26,7 @@ export interface Message {
 export interface Conversation {
   id: string
   type: 'DIRECT' | 'GROUP'
-  participants: { user: User, is_pinned: boolean }[]
+  participants: { user: User, is_pinned: boolean, chat_bg?: string | null }[]
   messages?: Message[]
   last_message?: {
     content: string

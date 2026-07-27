@@ -27,6 +27,7 @@ class User(Base):
     phone_number = Column(String, nullable=True)
     birthday = Column(String, nullable=True)
     theme_color = Column(String, nullable=True)
+    global_chat_bg = Column(String, nullable=True)
     status = Column(Enum(UserStatus), default=UserStatus.OFFLINE, nullable=False)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -51,6 +52,7 @@ class ConversationParticipant(Base):
     conversation_id = Column(String, ForeignKey("conversations.id", ondelete="CASCADE"), primary_key=True)
     joined_at = Column(DateTime(timezone=True), server_default=func.now())
     is_pinned = Column(Boolean, default=False)
+    chat_bg = Column(String, nullable=True)
 
     user = relationship("User", back_populates="conversations")
     conversation = relationship("Conversation", back_populates="participants")

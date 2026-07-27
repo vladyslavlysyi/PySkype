@@ -4,6 +4,7 @@ import { User, useAppStore } from '@/store/useAppStore'
 import { VoiceMessagePlayer } from './VoiceMessagePlayer'
 import Cropper from 'react-easy-crop'
 import getCroppedImg from '@/utils/cropImage'
+import { predefinedBackgrounds } from '@/utils/backgrounds'
 
 interface ProfileModalProps {
   user: User
@@ -31,6 +32,7 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
     phone_number: user.phone_number || '',
     birthday: user.birthday || '',
     theme_color: user.theme_color || '',
+    global_chat_bg: user.global_chat_bg || '',
     avatarUrl: user.avatar_url || '',
     password: ''
   })
@@ -125,7 +127,8 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
         description: formData.description,
         phone_number: formData.phone_number,
         birthday: formData.birthday,
-        theme_color: formData.theme_color
+        theme_color: formData.theme_color,
+        global_chat_bg: formData.global_chat_bg
       }
       
       if (formData.email) payload.email = formData.email
@@ -457,69 +460,71 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
 
               <div className="flex-1 overflow-y-auto p-6 space-y-6">
                 {/* Inputs block */}
-                <div className="bg-white dark:bg-[#201f1e] rounded-2xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-800">
+                {/* Inputs block */}
+                <div className="bg-white dark:bg-[#201f1e] rounded-2xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-800 space-y-1">
                   {/* Username */}
-                  <div className="group flex items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800 focus-within:bg-gray-50 dark:focus-within:bg-[#323130] transition-colors">
-                    <UserIcon className="w-5 h-5 text-gray-400 group-focus-within:text-[#0078d4] transition-colors w-12" />
-                    <div className="flex-1 relative">
-                      <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider absolute -top-1 left-0">Username</label>
+                  <div className="group flex items-center gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 focus-within:bg-gray-50 dark:focus-within:bg-[#323130] transition-colors">
+                    <UserIcon className="w-6 h-6 text-gray-400 group-focus-within:text-[#0078d4] transition-colors flex-shrink-0" />
+                    <div className="flex-1 flex flex-col justify-center">
+                      <label className="text-[11px] uppercase font-bold text-gray-400 tracking-wider mb-0.5">Username</label>
                       <input 
                         type="text" 
                         value={formData.username}
                         onChange={e => setFormData({...formData, username: e.target.value})}
-                        className="w-full bg-transparent border-none outline-none text-sm font-medium text-gray-900 dark:text-white pt-4 pb-1"
+                        className="w-full bg-transparent border-none outline-none text-base font-medium text-gray-900 dark:text-white p-0"
                       />
                     </div>
                   </div>
                   
                   {/* Phone */}
-                  <div className="group flex items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800 focus-within:bg-gray-50 dark:focus-within:bg-[#323130] transition-colors">
-                    <Phone className="w-5 h-5 text-gray-400 group-focus-within:text-[#0078d4] transition-colors w-12" />
-                    <div className="flex-1 relative">
-                      <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider absolute -top-1 left-0">Phone</label>
+                  <div className="group flex items-center gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 focus-within:bg-gray-50 dark:focus-within:bg-[#323130] transition-colors">
+                    <Phone className="w-6 h-6 text-gray-400 group-focus-within:text-[#0078d4] transition-colors flex-shrink-0" />
+                    <div className="flex-1 flex flex-col justify-center">
+                      <label className="text-[11px] uppercase font-bold text-gray-400 tracking-wider mb-0.5">Phone</label>
                       <input 
                         type="tel" 
                         value={formData.phone_number}
                         placeholder="+380..."
                         onChange={e => setFormData({...formData, phone_number: e.target.value})}
-                        className="w-full bg-transparent border-none outline-none text-sm font-medium text-gray-900 dark:text-white pt-4 pb-1"
+                        className="w-full bg-transparent border-none outline-none text-base font-medium text-gray-900 dark:text-white p-0"
                       />
                     </div>
                   </div>
 
                   {/* Birthday */}
-                  <div className="group flex items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800 focus-within:bg-gray-50 dark:focus-within:bg-[#323130] transition-colors">
-                    <Calendar className="w-5 h-5 text-gray-400 group-focus-within:text-[#0078d4] transition-colors w-12" />
-                    <div className="flex-1 relative">
-                      <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider absolute -top-1 left-0">Birthday</label>
+                  <div className="group flex items-center gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 focus-within:bg-gray-50 dark:focus-within:bg-[#323130] transition-colors">
+                    <Calendar className="w-6 h-6 text-gray-400 group-focus-within:text-[#0078d4] transition-colors flex-shrink-0" />
+                    <div className="flex-1 flex flex-col justify-center">
+                      <label className="text-[11px] uppercase font-bold text-gray-400 tracking-wider mb-0.5">Birthday</label>
                       <input 
                         type="text" 
                         value={formData.birthday}
                         placeholder="e.g., Nov 24"
                         onChange={e => setFormData({...formData, birthday: e.target.value})}
-                        className="w-full bg-transparent border-none outline-none text-sm font-medium text-gray-900 dark:text-white pt-4 pb-1"
+                        className="w-full bg-transparent border-none outline-none text-base font-medium text-gray-900 dark:text-white p-0"
                       />
                     </div>
                   </div>
                   
                   {/* Bio */}
-                  <div className="group flex items-start px-4 py-3 focus-within:bg-gray-50 dark:focus-within:bg-[#323130] transition-colors">
-                    <Info className="w-5 h-5 text-gray-400 group-focus-within:text-[#0078d4] transition-colors w-12 mt-3" />
-                    <div className="flex-1 relative">
-                      <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider absolute -top-1 left-0">Bio</label>
+                  <div className="group flex items-start gap-4 px-4 py-3 focus-within:bg-gray-50 dark:focus-within:bg-[#323130] transition-colors">
+                    <Info className="w-6 h-6 text-gray-400 group-focus-within:text-[#0078d4] transition-colors mt-2 flex-shrink-0" />
+                    <div className="flex-1 flex flex-col justify-center">
+                      <label className="text-[11px] uppercase font-bold text-gray-400 tracking-wider mb-0.5">Bio</label>
                       <textarea 
                         value={formData.description}
                         onChange={e => setFormData({...formData, description: e.target.value})}
                         rows={2}
                         placeholder="Tell us about yourself"
-                        className="w-full bg-transparent border-none outline-none text-sm font-medium text-gray-900 dark:text-white pt-4 pb-1 resize-none custom-scrollbar"
+                        className="w-full bg-transparent border-none outline-none text-base font-medium text-gray-900 dark:text-white p-0 resize-none custom-scrollbar"
                       />
                     </div>
                   </div>
                 </div>
 
+                {/* Theme Color Picker */}
                 <div className="bg-white dark:bg-[#201f1e] rounded-2xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-800 p-4">
-                  <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider block mb-3 pl-2">Theme Color</label>
+                  <label className="text-[11px] uppercase font-bold text-gray-400 tracking-wider block mb-3 pl-2">Theme Color</label>
                   <div className="flex flex-wrap gap-3 pl-2">
                     {[
                       'linear-gradient(to right, #0078d4, #00bcf2)',
@@ -539,31 +544,91 @@ export const ProfileModal = ({ user, onClose, isMe = false, conversationId, onSt
                   </div>
                 </div>
 
-                <div className="bg-white dark:bg-[#201f1e] rounded-2xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-800">
+                {/* Global Chat Background Picker */}
+                <div className="bg-white dark:bg-[#201f1e] rounded-2xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-800 p-4">
+                  <label className="text-[11px] uppercase font-bold text-gray-400 tracking-wider block mb-3 pl-2 flex justify-between items-center">
+                    Global Chat Background
+                    <label className="cursor-pointer text-[#0078d4] hover:underline flex items-center gap-1 normal-case text-xs">
+                      <LucideImage className="w-3 h-3" /> Upload custom
+                      <input 
+                        type="file" 
+                        accept="image/*" 
+                        className="hidden"
+                        onChange={async (e) => {
+                          const file = e.target.files?.[0]
+                          if (!file) return
+                          setIsLoading(true)
+                          try {
+                            const fd = new FormData()
+                            fd.append("file", file)
+                            const res = await fetch("/api/upload", {
+                              method: "POST",
+                              headers: { "Authorization": `Bearer ${localStorage.getItem('token')}` },
+                              body: fd
+                            })
+                            if (res.ok) {
+                              const data = await res.json()
+                              setFormData({...formData, global_chat_bg: data.url})
+                            }
+                          } catch (err) {
+                            console.error(err)
+                          } finally {
+                            setIsLoading(false)
+                          }
+                        }}
+                      />
+                    </label>
+                  </label>
+                  <div className="grid grid-cols-4 gap-2 pl-2">
+                    {/* Default (null) option */}
+                    <button
+                      onClick={() => setFormData({...formData, global_chat_bg: ''})}
+                      className={`aspect-[3/4] rounded-lg border-2 overflow-hidden flex items-center justify-center transition-all ${!formData.global_chat_bg ? 'border-[#0078d4] shadow-md' : 'border-transparent opacity-80 hover:opacity-100'}`}
+                      style={{ background: 'var(--bg-chat)' }} // Use standard default chat bg
+                    >
+                      <span className="text-[10px] text-gray-500 font-medium">Default</span>
+                    </button>
+                    {predefinedBackgrounds.map((bg, idx) => (
+                      <button
+                        key={idx}
+                        onClick={() => setFormData({...formData, global_chat_bg: bg})}
+                        className={`aspect-[3/4] rounded-lg border-2 overflow-hidden flex items-center justify-center transition-all ${formData.global_chat_bg === bg ? 'border-[#0078d4] shadow-md scale-105' : 'border-transparent opacity-80 hover:opacity-100 hover:scale-105'}`}
+                        style={{ 
+                          backgroundImage: bg.startsWith('http') || bg.startsWith('/') || bg.startsWith('data:') ? `url(${bg})` : bg,
+                          backgroundSize: 'cover',
+                          backgroundPosition: 'center'
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+
+                {/* Auth Details */}
+                <div className="bg-white dark:bg-[#201f1e] rounded-2xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-800 space-y-1">
                   {/* Email */}
-                  <div className="group flex items-center px-4 py-3 border-b border-gray-100 dark:border-gray-800 focus-within:bg-gray-50 dark:focus-within:bg-[#323130] transition-colors">
-                    <Mail className="w-5 h-5 text-gray-400 group-focus-within:text-[#0078d4] transition-colors w-12" />
-                    <div className="flex-1 relative">
-                      <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider absolute -top-1 left-0">Email address</label>
+                  <div className="group flex items-center gap-4 px-4 py-3 border-b border-gray-100 dark:border-gray-800 focus-within:bg-gray-50 dark:focus-within:bg-[#323130] transition-colors">
+                    <Mail className="w-6 h-6 text-gray-400 group-focus-within:text-[#0078d4] transition-colors flex-shrink-0" />
+                    <div className="flex-1 flex flex-col justify-center">
+                      <label className="text-[11px] uppercase font-bold text-gray-400 tracking-wider mb-0.5">Email address</label>
                       <input 
                         type="email" 
                         value={formData.email}
                         onChange={e => setFormData({...formData, email: e.target.value})}
-                        className="w-full bg-transparent border-none outline-none text-sm font-medium text-gray-900 dark:text-white pt-4 pb-1"
+                        className="w-full bg-transparent border-none outline-none text-base font-medium text-gray-900 dark:text-white p-0"
                       />
                     </div>
                   </div>
                   {/* Password */}
-                  <div className="group flex items-center px-4 py-3 focus-within:bg-gray-50 dark:focus-within:bg-[#323130] transition-colors">
-                    <Lock className="w-5 h-5 text-gray-400 group-focus-within:text-[#0078d4] transition-colors w-12" />
-                    <div className="flex-1 relative">
-                      <label className="text-[10px] uppercase font-bold text-gray-400 tracking-wider absolute -top-1 left-0">Change Password</label>
+                  <div className="group flex items-center gap-4 px-4 py-3 focus-within:bg-gray-50 dark:focus-within:bg-[#323130] transition-colors">
+                    <Lock className="w-6 h-6 text-gray-400 group-focus-within:text-[#0078d4] transition-colors flex-shrink-0" />
+                    <div className="flex-1 flex flex-col justify-center">
+                      <label className="text-[11px] uppercase font-bold text-gray-400 tracking-wider mb-0.5">Change Password</label>
                       <input 
                         type="password"
                         placeholder="Leave blank to keep current"
                         value={formData.password}
                         onChange={e => setFormData({...formData, password: e.target.value})}
-                        className="w-full bg-transparent border-none outline-none text-sm font-medium text-gray-900 dark:text-white pt-4 pb-1"
+                        className="w-full bg-transparent border-none outline-none text-base font-medium text-gray-900 dark:text-white p-0"
                       />
                     </div>
                   </div>

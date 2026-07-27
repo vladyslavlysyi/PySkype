@@ -31,6 +31,7 @@ class UserUpdate(BaseModel):
     phone_number: Optional[str] = None
     birthday: Optional[str] = None
     theme_color: Optional[str] = None
+    global_chat_bg: Optional[str] = None
 
 class UserResponse(UserBase):
     id: str
@@ -38,6 +39,7 @@ class UserResponse(UserBase):
     phone_number: Optional[str] = None
     birthday: Optional[str] = None
     theme_color: Optional[str] = None
+    global_chat_bg: Optional[str] = None
     status: UserStatus
     is_active: bool
     created_at: datetime
@@ -71,6 +73,7 @@ class ConversationParticipantResponse(BaseModel):
     user: UserResponse
     joined_at: datetime
     is_pinned: bool = False
+    chat_bg: Optional[str] = None
 
     class Config:
         from_attributes = True

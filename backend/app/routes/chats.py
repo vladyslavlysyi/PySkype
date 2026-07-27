@@ -129,3 +129,25 @@ async def delete_chat(conversation_id: str, db: AsyncSession = Depends(get_db), 
             await db.commit()
             
     return {"status": "success"}
+
+from pydantic import BaseModel
+
+class UpdateChatBgRequest(BaseModel):
+    chat_bg: str | None = None
+
+@router.put("/{conversation_id}/bg")
+async def update_chat_bg(conversation_id: str, req: UpdateChatBgRequest, db: AsyncSession = Depends(get_db), current_user: User = Depends(get_current_user)):
+    # Verify participant
+    part_result = await db.execute(
+        select(ConversationParticipant)
+        .where(ConversationParticipant.conversation_id == conversation_id)
+        .where(ConversationParticipant.user_id == current_user.id)
+    )
+    participant = part_result.scalars().first()
+    if not participant:
+        raise HTTPException(status_code=403, detail="Not a participant of this conversation")
+    
+    participant.chat_bg = req.chat_bg
+    await db.commit()
+    
+    return {"status": "success", "chat_bg": participant.chat_bg}

@@ -7,6 +7,7 @@ import { useWebSocket } from '@/contexts/WebSocketContext'
 import { ProfileModal } from './ProfileModal'
 import EmojiPicker from 'emoji-picker-react'
 import { VoiceMessagePlayer } from './VoiceMessagePlayer'
+import { predefinedBackgrounds } from '@/utils/backgrounds'
 
 interface ChatAreaProps {
   onStartCall: (video: boolean) => void
@@ -22,6 +23,8 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
   const [isProfileOpen, setIsProfileOpen] = useState(false)
   const [showEmoji, setShowEmoji] = useState(false)
   const [isRecording, setIsRecording] = useState(false)
+  const [isBgPickerOpen, setIsBgPickerOpen] = useState(false)
+  const [isUploadingBg, setIsUploadingBg] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const mediaRecorderRef = useRef<MediaRecorder | null>(null)
@@ -212,6 +215,35 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
     }
   }
 
+  const changeChatBackground = async (bgUrl: string) => {
+    if (!activeConversation) return
+    setIsUploadingBg(true)
+    try {
+      const res = await fetch(`/api/chats/${activeConversation.id}/bg`, {
+        method: 'PUT',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${localStorage.getItem('token')}` 
+        },
+        body: JSON.stringify({ chat_bg: bgUrl })
+      })
+      if (res.ok) {
+        setConversations(conversations.map(c => {
+          if (c.id === activeConversation.id) {
+            const part = c.participants.find(p => p.user.id === currentUser?.id)
+            if (part) part.chat_bg = bgUrl
+          }
+          return c
+        }))
+      }
+    } catch (err) {
+      console.error(err)
+    } finally {
+      setIsUploadingBg(false)
+      setIsBgPickerOpen(false)
+    }
+  }
+
   useEffect(() => {
     if (!activeConversation) return
 
@@ -360,6 +392,13 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
                   </button>
                   <div className="h-px bg-gray-100 dark:bg-gray-800 my-1"></div>
                   <button 
+                    onClick={() => { setIsMenuOpen(false); setIsBgPickerOpen(true); }}
+                    className="w-full text-left px-4 py-2.5 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-[#323130] transition-colors"
+                  >
+                    Change background
+                  </button>
+                  <div className="h-px bg-gray-100 dark:bg-gray-800 my-1"></div>
+                  <button 
                     onClick={deleteChat}
                     className="w-full text-left px-4 py-2.5 text-sm font-medium text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors"
                   >
@@ -372,8 +411,81 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
         </div>
       </div>
 
+      {isBgPickerOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm transition-opacity" onClick={() => setIsBgPickerOpen(false)} />
+          <div className="relative bg-white dark:bg-[#201f1e] w-full max-w-md rounded-2xl shadow-2xl p-6">
+            <h3 className="text-lg font-bold text-gray-900 dark:text-white mb-4">Choose Chat Background</h3>
+            <div className="grid grid-cols-4 gap-2 mb-6">
+              <button
+                onClick={() => changeChatBackground('')}
+                className="aspect-[3/4] rounded-lg border-2 border-transparent bg-gray-100 dark:bg-gray-800 hover:opacity-80 flex items-center justify-center"
+              >
+                <span className="text-[10px] text-gray-500 font-medium">Clear</span>
+              </button>
+              {predefinedBackgrounds.map((bg, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => changeChatBackground(bg)}
+                  className="aspect-[3/4] rounded-lg border-2 border-transparent hover:scale-105 transition-all overflow-hidden"
+                  style={{ 
+                    backgroundImage: bg.startsWith('http') || bg.startsWith('/') || bg.startsWith('data:') ? `url(${bg})` : bg,
+                    backgroundSize: 'cover',
+                    backgroundPosition: 'center'
+                  }}
+                />
+              ))}
+            </div>
+            
+            <label className="w-full flex items-center justify-center gap-2 py-3 bg-[#0078d4] hover:bg-[#005a9e] text-white rounded-xl cursor-pointer transition font-medium">
+              {isUploadingBg ? (
+                <span className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+              ) : (
+                <>Upload custom photo</>
+              )}
+              <input 
+                type="file" 
+                accept="image/*" 
+                className="hidden"
+                disabled={isUploadingBg}
+                onChange={async (e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  setIsUploadingBg(true)
+                  try {
+                    const fd = new FormData()
+                    fd.append("file", file)
+                    const res = await fetch("/api/upload", {
+                      method: "POST",
+                      headers: { "Authorization": `Bearer ${localStorage.getItem('token')}` },
+                      body: fd
+                    })
+                    if (res.ok) {
+                      const data = await res.json()
+                      await changeChatBackground(data.url)
+                    }
+                  } catch (err) {
+                    console.error(err)
+                    setIsUploadingBg(false)
+                  }
+                }}
+              />
+            </label>
+          </div>
+        </div>
+      )}
+
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar chat-bg">
+      <div 
+        ref={scrollRef} 
+        className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar chat-bg"
+        style={{
+          backgroundImage: myPart?.chat_bg || currentUser?.global_chat_bg ? `url(${myPart?.chat_bg || currentUser?.global_chat_bg})` : undefined,
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          backgroundAttachment: 'fixed'
+        }}
+      >
         {messages.map(msg => {
           const isMine = msg.sender_id === currentUser?.id
           return (

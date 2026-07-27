@@ -63,6 +63,18 @@ async def startup():
     except Exception:
         pass
 
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("ALTER TABLE users ADD COLUMN global_chat_bg VARCHAR;"))
+    except Exception:
+        pass
+
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("ALTER TABLE conversation_participants ADD COLUMN chat_bg VARCHAR;"))
+    except Exception:
+        pass
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
