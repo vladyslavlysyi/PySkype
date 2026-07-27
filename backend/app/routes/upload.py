@@ -39,16 +39,16 @@ async def upload_file(
         
         content_bytes = bytes(content)
     
-    # Generate unique filename
-    ext = os.path.splitext(file.filename)[1].lower()
-    
-    # Allowlist of safe extensions
-    ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.mp3', '.wav', '.ogg', '.webm', '.mp4', '.pdf', '.txt', '.doc', '.docx'}
-    if ext not in ALLOWED_EXTENSIONS:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"File extension {ext} not allowed.")
+        # Generate unique filename
+        ext = os.path.splitext(file.filename)[1].lower()
         
-    unique_filename = f"{uuid.uuid4()}{ext}"
-    file_path = os.path.join(UPLOAD_DIR, unique_filename)
+        # Allowlist of safe extensions
+        ALLOWED_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.webp', '.gif', '.mp3', '.wav', '.ogg', '.webm', '.mp4', '.pdf', '.txt', '.doc', '.docx'}
+        if ext not in ALLOWED_EXTENSIONS:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=f"File extension {ext} not allowed.")
+            
+        unique_filename = f"{uuid.uuid4()}{ext}"
+        file_path = os.path.join(UPLOAD_DIR, unique_filename)
 
         with open(file_path, "wb") as f:
             f.write(content_bytes)
