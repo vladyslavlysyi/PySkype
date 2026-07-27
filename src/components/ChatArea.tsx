@@ -373,7 +373,7 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
       </div>
 
       {/* Messages */}
-      <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar">
+      <div ref={scrollRef} className="flex-1 overflow-y-auto p-6 space-y-4 custom-scrollbar chat-bg">
         {messages.map(msg => {
           const isMine = msg.sender_id === currentUser?.id
           return (
