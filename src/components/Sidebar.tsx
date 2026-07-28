@@ -283,9 +283,13 @@ export const Sidebar = () => {
                   >
                     <div className="relative flex-shrink-0">
                       {conv.type === 'GROUP' ? (
-                        <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[#0078d4]">
-                          <Users className="w-5 h-5" />
-                        </div>
+                        conv.avatar_url ? (
+                          <img src={conv.avatar_url} alt="group avatar" className="w-10 h-10 rounded-full object-cover" />
+                        ) : (
+                          <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[#0078d4]">
+                            <Users className="w-5 h-5" />
+                          </div>
+                        )
                       ) : partner?.avatar_url ? (
                         <img src={partner.avatar_url} alt="avatar" className="w-10 h-10 rounded-full object-cover" />
                       ) : (
@@ -297,7 +301,7 @@ export const Sidebar = () => {
                       <div className="flex justify-between items-baseline">
                         <div className="flex items-center gap-1">
                           <h4 className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                            {conv.type === 'GROUP' ? `Group Chat (${conv.participants.length})` : partner?.username}
+                            {conv.type === 'GROUP' ? (conv.name || `Group Chat (${conv.participants.length})`) : partner?.username}
                           </h4>
                           {isPinned && <span className="text-[10px] text-[#0078d4]">📌</span>}
                         </div>

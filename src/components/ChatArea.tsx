@@ -524,19 +524,33 @@ export const ChatArea = ({ onStartCall }: ChatAreaProps) => {
           </button>
           <div 
             className="flex items-center gap-3 cursor-pointer hover:bg-gray-200 dark:hover:bg-[#323130] p-1.5 rounded-xl transition"
-            onClick={() => setIsProfileOpen(true)}
+            onClick={() => {
+              if (activeConversation.type !== 'GROUP') setIsProfileOpen(true)
+            }}
           >
-            {partner?.avatar_url ? (
+            {activeConversation.type === 'GROUP' ? (
+              activeConversation.avatar_url ? (
+                <img src={activeConversation.avatar_url} alt="group avatar" className="w-10 h-10 rounded-full object-cover ring-2 ring-gray-100 dark:ring-gray-800" />
+              ) : (
+                <div className="w-10 h-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center text-[#0078d4] ring-2 ring-gray-100 dark:ring-gray-800">
+                  <Users className="w-5 h-5" />
+                </div>
+              )
+            ) : partner?.avatar_url ? (
               <img src={partner.avatar_url} alt="avatar" className="w-10 h-10 rounded-full ring-2 ring-gray-100 dark:ring-gray-800" />
             ) : (
               <UserCircle className="w-10 h-10 text-gray-500" />
             )}
             <div>
               <div className="flex items-center gap-2">
-                <h2 className="font-semibold text-gray-900 dark:text-white">{partner?.username}</h2>
+                <h2 className="font-semibold text-gray-900 dark:text-white">
+                  {activeConversation.type === 'GROUP' ? (activeConversation.name || `Group Chat (${activeConversation.participants.length})`) : partner?.username}
+                </h2>
                 {isPinned && <span className="text-[10px] text-[#0078d4]">📌</span>}
               </div>
-              <p className="text-xs text-[#0078d4] font-medium">{partner?.status === 'ONLINE' ? 'Active now' : 'Offline'}</p>
+              <p className="text-xs text-[#0078d4] font-medium">
+                {activeConversation.type === 'GROUP' ? `${activeConversation.participants.length} participants` : (partner?.status === 'ONLINE' ? 'Active now' : 'Offline')}
+              </p>
             </div>
           </div>
         </div>

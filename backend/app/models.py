@@ -40,6 +40,8 @@ class Conversation(Base):
 
     id = Column(String, primary_key=True, default=lambda: str(uuid.uuid4()))
     type = Column(Enum(ConversationType), default=ConversationType.DIRECT, nullable=False)
+    name = Column(String, nullable=True)
+    avatar_url = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     participants = relationship("ConversationParticipant", back_populates="conversation", cascade="all, delete-orphan")

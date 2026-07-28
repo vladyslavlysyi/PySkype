@@ -167,7 +167,11 @@ async def create_group_chat(req: CreateGroupRequest, db: AsyncSession = Depends(
         raise HTTPException(status_code=400, detail="Maximum 200 members allowed")
     
     # Create conversation
-    conv = Conversation(type=ConversationType.GROUP)
+    conv = Conversation(
+        type=ConversationType.GROUP,
+        name=req.name,
+        avatar_url=req.avatar_url
+    )
     db.add(conv)
     await db.commit()
     await db.refresh(conv)

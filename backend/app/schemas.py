@@ -130,6 +130,8 @@ class ConversationParticipantResponse(BaseModel):
 class ConversationResponse(BaseModel):
     id: str
     type: ConversationType
+    name: Optional[str] = None
+    avatar_url: Optional[str] = None
     created_at: datetime
     participants: List[ConversationParticipantResponse]
     last_message: Optional[dict] = None

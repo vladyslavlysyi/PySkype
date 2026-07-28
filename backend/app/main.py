@@ -134,8 +134,20 @@ async def startup():
 
     try:
         async with engine.begin() as conn:
-            # Postgres specific: add GROUP to enum if not exists
-            await conn.execute(text("ALTER TYPE conversationtype ADD VALUE IF NOT EXISTS 'GROUP';"))
+            await conn.execute(text("ALTER TABLE conversations ADD COLUMN name VARCHAR;"))
+    except Exception:
+        pass
+
+    try:
+        async with engine.begin() as conn:
+            await conn.execute(text("ALTER TABLE conversations ADD COLUMN avatar_url VARCHAR;"))
+    except Exception:
+        pass
+
+    try:
+        # ALTER TYPE cannot run inside a transaction block in Postgres, so we must use a separate connection with autocommit
+        async with engine.connect() as conn:
+            await conn.execution_options(isolation_level="AUTOCOMMIT").execute(text("ALTER TYPE conversationtype ADD VALUE IF NOT EXISTS 'GROUP';"))
     except Exception:
         pass
 
